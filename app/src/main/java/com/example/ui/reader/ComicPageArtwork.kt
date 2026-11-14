@@ -28,7 +28,7 @@ import kotlin.math.roundToInt
  * avoiding 4x memory spikes and keeping APK size compact.
  * Max capacity of 32 entries (~8 stories * 4 panels) keeps heap usage bounded (~25-35 MB worst case).
  */
-private object ComicPanelCropCache {
+internal object ComicPanelCropCache {
     private val cache = object : LruCache<String, ImageBitmap>(32) {}
 
     fun getOrDecodePanel(
@@ -66,13 +66,9 @@ private object ComicPanelCropCache {
         val height = boundsOpts.outHeight
         if (width <= 0 || height <= 0) return null
 
-        val leftPx = (crop.left.coerceIn(0f, 1f) * width).roundToInt().coerceIn(0, width - 1)
-        val topPx = (crop.top.coerceIn(0f, 1f) * height).roundToInt().coerceIn(0, height - 1)
-        val rightPx = (crop.right.coerceIn(0f, 1f) * width).roundToInt().coerceIn(leftPx + 1, width)
-        val bottomPx = (crop.bottom.coerceIn(0f, 1f) * height).roundToInt().coerceIn(topPx + 1, height)
-        val regionRect = Rect(leftPx, topPx, rightPx, bottomPx)
+        val regionRect = computeRegionRect(width, height, crop)
 
-        // Second pass: decode only the bounded comic panel rectangle
+        // Second pass: decode only the bounded comic panel rectangle via BitmapRegionDecoder
         val regionBitmap = resources.openRawResource(resId).use { stream ->
             val decoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 BitmapRegionDecoder.newInstance(stream)
@@ -86,7 +82,34 @@ private object ComicPanelCropCache {
                 decoder?.recycle()
             }
         }
-        return regionBitmap?.asImageBitmap()
+        if (regionBitmap != null) {
+            return regionBitmap.asImageBitmap()
+        }
+
+        // Secondary fallback when platform/stream decoder returns null: crop from full decoded bitmap
+        val fullBitmap = resources.openRawResource(resId).use { stream ->
+            BitmapFactory.decodeStream(stream)
+        } ?: return null
+        val safeRect = computeRegionRect(fullBitmap.width, fullBitmap.height, crop)
+        val cropped = android.graphics.Bitmap.createBitmap(
+            fullBitmap,
+            safeRect.left,
+            safeRect.top,
+            safeRect.width(),
+            safeRect.height()
+        )
+        if (cropped !== fullBitmap) {
+            fullBitmap.recycle()
+        }
+        return cropped.asImageBitmap()
+    }
+
+    internal fun computeRegionRect(width: Int, height: Int, crop: PanelCrop): Rect {
+        val leftPx = (crop.left.coerceIn(0f, 1f) * width).roundToInt().coerceIn(0, width - 1)
+        val topPx = (crop.top.coerceIn(0f, 1f) * height).roundToInt().coerceIn(0, height - 1)
+        val rightPx = (crop.right.coerceIn(0f, 1f) * width).roundToInt().coerceIn(leftPx + 1, width)
+        val bottomPx = (crop.bottom.coerceIn(0f, 1f) * height).roundToInt().coerceIn(topPx + 1, height)
+        return Rect(leftPx, topPx, rightPx, bottomPx)
     }
 }
 

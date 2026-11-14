@@ -5,10 +5,13 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
+import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
+import com.example.ui.reader.ComicPanelCropCache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -224,5 +227,65 @@ class ExampleRobolectricTest {
         val ruComic = viewModel.uiState.value.comics.first()
         viewModel.reorderPages(ruComic.id, ruComic.pages)
         assertEquals("Порядок страниц сохранен (${ruComic.pages.size} стр.)", viewModel.uiState.value.snackbarMessage)
+    }
+
+    @Test
+    fun `panel crop rectangle calculation handles normal and out-of-bounds coordinates safely`() {
+        val normalRect = ComicPanelCropCache.computeRegionRect(
+            width = 1000,
+            height = 1000,
+            crop = PanelCrop(left = 0.5f, top = 0.5f, right = 0.98f, bottom = 0.98f)
+        )
+        assertEquals(500, normalRect.left)
+        assertEquals(500, normalRect.top)
+        assertEquals(980, normalRect.right)
+        assertEquals(980, normalRect.bottom)
+
+        // Inverted / out-of-range coordinates must clamp cleanly without throwing IllegalArgumentException
+        val clampedRect = ComicPanelCropCache.computeRegionRect(
+            width = 800,
+            height = 600,
+            crop = PanelCrop(left = 1.5f, top = -0.5f, right = 0.1f, bottom = 2.0f)
+        )
+        assertTrue(clampedRect.left in 0 until clampedRect.right)
+        assertTrue(clampedRect.top in 0 until clampedRect.bottom)
+        assertTrue(clampedRect.right <= 800)
+        assertTrue(clampedRect.bottom <= 600)
+    }
+
+    @Test
+    fun `panel crop decoding extracts bounded bitmap from 2x2 sheet and falls back cleanly on invalid resource`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val crop = PanelCrop(left = 0.015f, top = 0.082f, right = 0.496f, bottom = 0.532f)
+
+        // Valid 2x2 episode sheet decodes and hits cache cleanly
+        val cropped = ComicPanelCropCache.getOrDecodePanel(context.resources, R.drawable.img_ep02_ru, crop)
+        assertNotNull(cropped)
+        assertTrue(cropped!!.width > 0 && cropped.height > 0)
+
+        val cachedAgain = ComicPanelCropCache.getOrDecodePanel(context.resources, R.drawable.img_ep02_ru, crop)
+        assertNotNull(cachedAgain)
+
+        // Invalid resource ID must degrade gracefully to null instead of crashing
+        val invalid = ComicPanelCropCache.getOrDecodePanel(context.resources, 0, crop)
+        assertNull(invalid)
+    }
+
+    @Test
+    fun `repository degrades gracefully when persisted custom comics JSON or saved language is corrupted`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("cyber_comics_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("saved_language", "CORRUPTED_LANG_CODE")
+            .putString("custom_comics_json", "{not_valid_json_array!!!")
+            .commit()
+
+        val repository = ComicRepository(context)
+
+        // Must fall back to English default and still serve all 25 built-in stories safely
+        assertEquals(AppLanguage.ENGLISH, repository.currentLanguage.value)
+        val builtIn = repository.comics.value.filter { it.isBuiltIn }
+        assertEquals(25, builtIn.size)
+        assertEquals(0, repository.comics.value.count { !it.isBuiltIn })
     }
 }
