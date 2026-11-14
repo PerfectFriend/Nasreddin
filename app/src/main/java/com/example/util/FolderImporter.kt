@@ -6,14 +6,16 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
+import com.example.model.AppLanguage
 import com.example.model.ComicBook
 import com.example.model.ComicPage
 import java.util.UUID
 
 /**
  * Storage Access Framework (SAF) importer for user-provided comic folders and multi-image selections.
- * Automatically retains persistable read URI permissions across app restarts and sorts pages
- * using [AlphanumericComparator] so "page2" precedes "page10".
+ * Automatically retains persistable read URI permissions across app restarts, sorts pages
+ * using [AlphanumericComparator] so "page2" precedes "page10", and generates localized metadata
+ * via [AppStrings] matching the active [AppLanguage].
  */
 object FolderImporter {
     private const val TAG = "FolderImporter"
@@ -31,7 +33,11 @@ object FolderImporter {
         "jpg", "jpeg", "png", "webp", "gif", "bmp"
     )
 
-    fun importFromFolderTreeUri(context: Context, treeUri: Uri): ComicBook? {
+    fun importFromFolderTreeUri(
+        context: Context,
+        treeUri: Uri,
+        language: AppLanguage = AppLanguage.RUSSIAN
+    ): ComicBook? {
         try {
             // Persist read access across app restarts
             try {
@@ -84,25 +90,32 @@ object FolderImporter {
             val comparator = AlphanumericComparator()
             rawItems.sortWith { a, b -> comparator.compare(a.displayName, b.displayName) }
 
-            val folderName = getTreeDisplayName(context, treeUri) ?: "Импортированный комикс"
+            val folderName = getTreeDisplayName(context, treeUri)
+                ?: AppStrings.importedComicFallbackTitle(language)
 
             val pages = rawItems.mapIndexed { index, item ->
                 ComicPage(
                     id = UUID.randomUUID().toString(),
-                    title = "Стр. ${index + 1}: ${item.displayName.substringBeforeLast('.')}",
+                    title = AppStrings.importedPageTitle(
+                        lang = language,
+                        pageNumber = index + 1,
+                        fileName = item.displayName.substringBeforeLast('.')
+                    ),
                     uriString = item.uri.toString(),
-                    sequenceNumber = index + 1
+                    sequenceNumber = index + 1,
+                    language = language
                 )
             }
 
             return ComicBook(
                 id = UUID.randomUUID().toString(),
                 title = folderName,
-                subtitle = "Папка (${pages.size} стр.)",
-                description = "Импортировано из папки: $folderName",
+                subtitle = AppStrings.importedFolderSubtitle(language, pages.size),
+                description = AppStrings.importedFolderDescription(language, folderName),
                 coverUriString = pages.firstOrNull()?.uriString,
                 pages = pages,
                 isBuiltIn = false,
+                language = language,
                 sourceFolderUri = treeUri.toString()
             )
         } catch (e: Exception) {
@@ -111,7 +124,11 @@ object FolderImporter {
         }
     }
 
-    fun importFromSelectedUris(context: Context, uris: List<Uri>): ComicBook? {
+    fun importFromSelectedUris(
+        context: Context,
+        uris: List<Uri>,
+        language: AppLanguage = AppLanguage.RUSSIAN
+    ): ComicBook? {
         if (uris.isEmpty()) return null
 
         val rawItems = mutableListOf<RawImageItem>()
@@ -142,20 +159,26 @@ object FolderImporter {
         val pages = rawItems.mapIndexed { index, item ->
             ComicPage(
                 id = UUID.randomUUID().toString(),
-                title = "Стр. ${index + 1}: ${item.displayName.substringBeforeLast('.')}",
+                title = AppStrings.importedPageTitle(
+                    lang = language,
+                    pageNumber = index + 1,
+                    fileName = item.displayName.substringBeforeLast('.')
+                ),
                 uriString = item.uri.toString(),
-                sequenceNumber = index + 1
+                sequenceNumber = index + 1,
+                language = language
             )
         }
 
         return ComicBook(
             id = UUID.randomUUID().toString(),
-            title = "Новый комикс (${pages.size} стр.)",
-            subtitle = "Пользовательский выбор файлов",
-            description = "Комикс сформирован из ${pages.size} выбранных изображений",
+            title = AppStrings.newImportedComicTitle(language, pages.size),
+            subtitle = AppStrings.customSelectionSubtitle(language),
+            description = AppStrings.customSelectionDescription(language, pages.size),
             coverUriString = pages.firstOrNull()?.uriString,
             pages = pages,
-            isBuiltIn = false
+            isBuiltIn = false,
+            language = language
         )
     }
 

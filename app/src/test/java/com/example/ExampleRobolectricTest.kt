@@ -5,10 +5,14 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
+import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
 import com.example.ui.reader.ComicPanelCropCache
+import com.example.ui.reader.computeAdaptiveBubbleTypography
 import com.example.ui.reader.computeFittedArtworkRect
+import com.example.util.AppStrings
+import com.example.util.FolderImporter
 import com.example.util.StoryBubbleComposer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -385,5 +389,73 @@ class ExampleRobolectricTest {
         assertFalse(viewModel.uiState.value.showSpeechBubbles)
         viewModel.toggleSpeechBubbles()
         assertTrue(viewModel.uiState.value.showSpeechBubbles)
+    }
+
+    @Test
+    fun `golden reference parables 12 and 22 maintain stable 4-beat bubble layout and localized morals`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+
+        for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
+            repository.setLanguage(lang)
+            val builtIn = repository.comics.value.filter { it.isBuiltIn }
+
+            // Golden story #12 ("Потерянный осел") and #22 ("Ты тоже прав")
+            for (storyNumber in listOf(12, 22)) {
+                val story = builtIn.first { it.storyNumber == storyNumber }
+                assertEquals(4, story.pages.size)
+
+                // Should extract at least one dialogue/thought SPEECH bubble across the 4 scenes
+                val allBubbles = story.pages.flatMap { it.bubbles }
+                assertTrue(
+                    "Story $storyNumber ($lang) must contain at least one speech/thought bubble",
+                    allBubbles.any { it.style == BubbleStyle.SPEECH || it.style == BubbleStyle.THOUGHT }
+                )
+
+                // Page 4 must carry localized moral plaque in RU, ES, and EN
+                val moralBubble = story.pages[3].bubbles.firstOrNull { it.id.endsWith("_moral") }
+                assertNotNull("Story $storyNumber ($lang) page 4 must have localized moral bubble", moralBubble)
+                assertEquals(BubbleStyle.NARRATION, moralBubble!!.style)
+                assertTrue(moralBubble.text.length > 15)
+            }
+        }
+    }
+
+    @Test
+    fun `adaptive bubble typography scales down cleanly for verbose RU ES text on narrow screens`() {
+        val tabletShort = computeAdaptiveBubbleTypography(
+            textLength = 28,
+            maxBubbleWidthDp = 320f,
+            style = BubbleStyle.SPEECH
+        )
+        val narrowLong = computeAdaptiveBubbleTypography(
+            textLength = 165,
+            maxBubbleWidthDp = 180f,
+            style = BubbleStyle.SPEECH
+        )
+
+        assertEquals(12.5f, tabletShort.fontSizeSp, 0.01f)
+        assertEquals(5, tabletShort.maxLines)
+
+        assertTrue(narrowLong.fontSizeSp < tabletShort.fontSizeSp)
+        assertTrue(narrowLong.fontSizeSp >= 9.5f)
+        assertEquals(7, narrowLong.maxLines)
+        assertEquals(9f, narrowLong.horizontalPaddingDp, 0.01f)
+    }
+
+    @Test
+    fun `folder importer labels strictly localize across RU ES EN and handle empty selection safely`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        // Empty selection returns null safely across any language
+        assertNull(FolderImporter.importFromSelectedUris(context, emptyList(), AppLanguage.SPANISH))
+
+        assertTrue(AppStrings.importedPageTitle(AppLanguage.RUSSIAN, 1, "img").startsWith("Стр. 1:"))
+        assertTrue(AppStrings.importedPageTitle(AppLanguage.SPANISH, 1, "img").startsWith("Pág. 1:"))
+        assertTrue(AppStrings.importedPageTitle(AppLanguage.ENGLISH, 1, "img").startsWith("Page 1:"))
+
+        assertEquals("Cómic importado", AppStrings.importedComicFallbackTitle(AppLanguage.SPANISH))
+        assertEquals("Imported Comic", AppStrings.importedComicFallbackTitle(AppLanguage.ENGLISH))
+        assertEquals("Импортированный комикс", AppStrings.importedComicFallbackTitle(AppLanguage.RUSSIAN))
     }
 }

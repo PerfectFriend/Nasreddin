@@ -9,7 +9,9 @@
     "text_ru": "Ходжа трижды восходил на кафедру в мечети с вопросом: «Знаете ли вы, что я вам скажу?» На ответ «Не знаем» он сказал: «Если не знаете, зачем говорить?» На ответ «Знаем» сказал: «Раз знаете, незачем говорить». Когда прихожане ответили «Одни знают, другие нет», он воскликнул: «Прекрасно! Пусть те, кто знает, расскажут тем, кто не знает!»",
     "text_es": "Hodja subió al púlpito tres veces preguntando: «¿Saben lo que les diré?» Al oír «No sabemos», dijo: «¿Para qué hablarles?» Al oír «Sabemos», dijo: «No hay necesidad de hablar». Cuando dijeron «Unos saben y otros no», exclamó: «¡Excelente! ¡Que los que saben se lo cuenten a los que no saben!»",
     "text_en": "Hodja ascended the pulpit asking: 'Do you know what I will say?' To 'No', he replied: 'Why speak then?' To 'Yes', he answered: 'No need to speak'. When they replied 'Some know, some do not', he declared: 'Splendid! Let those who know tell those who do not!'",
-    "moral_ru": "Истинное знание живо лишь тогда, когда им искренне делятся друг с другом."
+    "moral_ru": "Истинное знание живо лишь тогда, когда им искренне делятся друг с другом.",
+    "moral_es": "El verdadero saber solo vive cuando se comparte con sinceridad.",
+    "moral_en": "True wisdom thrives only when genuinely shared with others."
   },
   {
     "id": "anecdote_02",
@@ -21,7 +23,9 @@
     "text_ru": "Жадный трактирщик требовал с бедняка плату за то, что тот нюхал дым от котла с пловом. Насреддин подозвал трактирщика, долго звенел монетами в кулаке над его ухом и сказал: «Кто продает запах обеда, тот получает звон монет».",
     "text_es": "Un tabernero codicioso exigió dinero a un mendigo solo por oler el vapor de su comida. Hodja se acercó e hizo sonar monedas en su puño junto al oído del posadero: «Quien vende el olor de la comida recibe el tintineo de las monedas».",
     "text_en": "A greedy innkeeper demanded money from a pauper for smelling his steaming stew. Hodja jingled coins in his closed hand near the innkeeper's ear: 'He who sells the smell of food is paid with the sound of money.'",
-    "moral_ru": "Плата должна быть соразмерна товару: за иллюзию платят звуком."
+    "moral_ru": "Плата должна быть соразмерна товару: за иллюзию платят звуком.",
+    "moral_es": "El pago debe corresponder al bien: una ilusión se paga con sonido.",
+    "moral_en": "Payment should match the goods: an illusion earns only sound."
   },
   {
     "id": "anecdote_03",
@@ -33,7 +37,9 @@
     "text_ru": "Ходжа взял у эмира мешок золота, пообещав за 20 лет научить ишака читать под страхом казни. На вопрос друзей он ответил: «Не бойтесь! За двадцать лет кто-нибудь обязательно помрет — или эмир, или ишак, или я!»",
     "text_es": "Hodja aceptó una bolsa de oro del emir prometiendo enseñar a leer a un asno en 20 años bajo pena de muerte. A sus asustados amigos les dijo: «¡En 20 años seguro muere alguien: o el emir, o el burro, o yo!»",
     "text_en": "Hodja took a bag of gold from the Emir promising to teach a donkey to read in 20 years on pain of death. He comforted friends: 'In 20 years, one of us will surely die: the Emir, the donkey, or me!'",
-    "moral_ru": "Время — главный союзник мудреца против тирании и невыполнимых обещаний."
+    "moral_ru": "Время — главный союзник мудреца против тирании и невыполнимых обещаний.",
+    "moral_es": "El tiempo es el gran aliado del sabio frente a la tiranía y promesas imposibles.",
+    "moral_en": "Time is the sage's finest ally against tyranny and impossible demands."
   },
   {
     "id": "anecdote_04",
@@ -45,7 +51,9 @@
     "text_ru": "Насреддин одолжил котел у соседа и вернул с маленьким ковшиком: «Твой котел родил ребенка». Сосед с радостью поверил. Затем Ходжа взял котел снова и долго не отдавал. Когда сосед пришел, Ходжа вздохнул: «Твой котел умер». Сосед закричал: «Как котел может умереть?!» — «Если ты поверил, что он родил, поверь и в то, что он может умереть».",
     "text_es": "Hodja pidió un caldero prestado y lo devolvió con un cacillo: «Tu caldero parió una cría». El vecino lo aceptó feliz. Luego Hodja lo pidió de nuevo y no lo devolvía. Al reclamarlo, dijo: «Tu caldero murió». «¿Cómo va a morir un caldero?» — «Si creíste que parió, debes creer que murió».",
     "text_en": "Hodja borrowed a pot and returned it with a small pan: 'Your pot gave birth'. The neighbor happily accepted. Later Hodja borrowed it again and said: 'Your pot died'. 'How can a pot die?!' — 'If you believed it could give birth, believe it can die.'",
-    "moral_ru": "Жадность заставляет человека верить в абсурдные выгоды, но отказываться от естественных законов."
+    "moral_ru": "Жадность заставляет человека верить в абсурдные выгоды, но отказываться от естественных законов.",
+    "moral_es": "La codicia hace creer en ganancias absurdas, pero rechazar consecuencias lógicas.",
+    "moral_en": "Greed makes people accept absurd miracles yet deny the natural laws that follow."
   },
   {
     "id": "anecdote_05",
@@ -57,7 +65,9 @@
     "text_ru": "Жадный ростовщик упал в бурную реку и тонул. Люди с берега кричали: «Дай руку! Дай руку!», но тот не протягивал руки. Насреддин подбежал и крикнул: «На, бери руку!» Ростовщик тут же вцепился в нее и был спасен. Ходжа объяснил: «Он умеет только брать, слово 'дай' для него гибель!»",
     "text_es": "Un usurero codicioso cayó al río. Todos gritaban: «¡Dame la mano!», pero no respondía. Hodja corrió y le gritó: «¡Toma mi mano!» El usurero se aferró de inmediato. Hodja explicó: «Él solo sabe tomar, ¡la palabra 'dar' lo ahogaba!»",
     "text_en": "A greedy usurer was drowning in a river. Crowds shouted 'Give your hand!', but he wouldn't. Hodja ran up and shouted: 'Take my hand!' The man grabbed it immediately. Hodja explained: 'He only knows how to take; 'give' would kill him!'",
-    "moral_ru": "К каждому человеку нужен ключ на языке его истинной природы."
+    "moral_ru": "К каждому человеку нужен ключ на языке его истинной природы.",
+    "moral_es": "Cada persona requiere la llave en el idioma de su propia naturaleza.",
+    "moral_en": "Every soul responds only to words spoken in the language of its own nature."
   },
   {
     "id": "anecdote_06",
@@ -69,7 +79,9 @@
     "text_ru": "Насреддина в лохмотьях не пустили на пир и прогнали. Он вернулся в расшитом золотом халате — его усадили на лучшее место. Ходжа стал макать рукава халата в плов и приговаривать: «Ешь, халат, пей, халат! Ведь угощение предназначалось тебе, а не мне!»",
     "text_es": "A Hodja vestido con harapos no lo dejaron entrar al banquete. Regresó con una túnica de seda bordada en oro y fue honrado. Hodja comenzó a mojar sus mangas en la comida diciendo: «¡Come, túnica! ¡Porque el festín no era para mí, sino para ti!»",
     "text_en": "Dressed in rags, Hodja was kicked out of a banquet. He returned in a lavish golden robe and was given the best seat. He began feeding his sleeves into the pilaf: 'Eat, coat! For the feast was meant for you, not me!'",
-    "moral_ru": "Мир часто судит по обертке, забывая о сути человека."
+    "moral_ru": "Мир часто судит по обертке, забывая о сути человека.",
+    "moral_es": "El mundo suele juzgar por las apariencias olvidando el valor interior.",
+    "moral_en": "The world too often honors fine garments while overlooking the soul inside."
   },
   {
     "id": "anecdote_07",
@@ -81,7 +93,9 @@
     "text_ru": "Сосед пришел к Ходже одолжить осла. «Его нет дома, одолжил брату», — ответил Насреддин. В этот момент осел громко закричал в хлеву. Сосед возмутился: «Ты лжешь, я слышу его крик!» Насреддин строго ответил: «Странный ты человек! Кому ты больше веришь — почтенному старцу с седой бородой или глупому ослу?»",
     "text_es": "Un vecino pidió prestado el burro a Hodja. «No está en casa, se lo presté a mi hermano», dijo. En ese momento el asno rebuznó en el establo. «¡Mientes, lo oigo rebuznar!» Hodja respondió: «¡Qué extraño eres! ¿Le crees más a un sabio venerable o a un burro?»",
     "text_en": "A neighbor asked to borrow Hodja's donkey. 'He isn't home', Hodja said. Right then, the donkey brayed loudly inside. 'You lie, I hear him!' Hodja retorted: 'Strange man! Do you believe a grey-bearded sage or a stubborn donkey?'",
-    "moral_ru": "Очевидные факты порой бессильны против непоколебимого авторитета."
+    "moral_ru": "Очевидные факты порой бессильны против непоколебимого авторитета.",
+    "moral_es": "Los hechos evidentes a veces palidecen ante un aplomo inquebrantable.",
+    "moral_en": "Even obvious facts struggle against unshakable composure."
   },
   {
     "id": "anecdote_08",
@@ -93,7 +107,9 @@
     "text_ru": "Гордый мулла спросил Насреддина перед толпой: «Ты хвалишься мудростью, так скажи, где центр земли?» Ходжа воткнул посох в пыль: «Ровно под правой задней ногой моего осла». — «Чем докажешь?» — «Возьми веревку и измерь до всех краев света. Ошибусь хоть на волос — осел твой!»",
     "text_es": "Un arrogante clérigo preguntó a Hodja: «Dices ser sabio, ¿dónde está el centro de la tierra?» Hodja clavó su bastón: «Justo bajo la pata trasera derecha de mi asno». «¿Cómo lo pruebas?» «Mide con una cuerda hasta los confines del mundo. Si yerro por un milímetro, el asno es tuyo».",
     "text_en": "A boastful scholar challenged Hodja: 'Where is the exact center of the earth?' Hodja struck the ground: 'Right under my donkey's right hind hoof.' 'How can you prove it?' 'Measure the distance to the ends of the earth. If I'm off by an inch, the donkey is yours!'",
-    "moral_ru": "На неразрешимый вопрос лучший ответ — столь же остроумная и неопровержимая гипотеза."
+    "moral_ru": "На неразрешимый вопрос лучший ответ — столь же остроумная и неопровержимая гипотеза.",
+    "moral_es": "Ante una pregunta imposible, la mejor respuesta es una hipótesis igual de irrefutable.",
+    "moral_en": "An impossible question deserves an equally unprovable yet witty answer."
   },
   {
     "id": "anecdote_09",
@@ -105,7 +121,9 @@
     "text_ru": "Насреддин каждый день перевозил через границу тюки соломы. Таможенники обыскивали солому, жгли, мочили — контрабанды не было. Спустя годы таможенник на пенсии спросил: «Насреддин, умоляю, скажи, что ты возил?» — «Ослов», — признался Ходжа.",
     "text_es": "Hodja cruzaba la frontera a diario con sacos de paja. Los aduaneros registraban la paja de arriba abajo y nunca hallaron nada ilegal. Años después, un guardia jubilado le suplicó: «Hodja, dinos la verdad, ¿qué contrabandeabas?» «Asnos», respondió el sabio.",
     "text_en": "Every day Hodja crossed the border leading a donkey with bundles of straw. Guards searched the straw thoroughly but found nothing. Years later, a retired guard begged: 'Hodja, tell me, what were you smuggling?' 'Donkeys', smiled Hodja.",
-    "moral_ru": "Самое ценное часто лежит прямо перед глазами, пока люди копаются в соломе."
+    "moral_ru": "Самое ценное часто лежит прямо перед глазами, пока люди копаются в соломе.",
+    "moral_es": "Lo más valioso suele estar a plena vista mientras todos buscan entre la paja.",
+    "moral_en": "The real secret often stands in plain sight while people search the straw."
   },
   {
     "id": "anecdote_10",
@@ -117,7 +135,9 @@
     "text_ru": "На проповеди Ходжа воззвал: «Благодарите Всевышнего за мудрость Его!» — «За что именно?» — спросили прихожане. «За то, что Он не дал крыльев верблюдам! Представьте, если бы эти великаны летали и садились на крыши наших глиняных домов!»",
     "text_es": "Durante una plática, Hodja exclamó: «¡Agradezcan al Creador Su infinita sabiduría!» «¿Por qué cosa, maestro?» «¡Por no haberle dado alas a los camellos! ¡Imaginen si estas bestias volaran y aterrizaran en los tejados de nuestras casas de barro!»",
     "text_en": "Preaching to the crowd, Hodja exclaimed: 'Thank the Almighty for His great wisdom!' 'For what, Hodja?' 'For not giving wings to camels! Imagine if those giant beasts flew and roosted upon our mud-brick roofs!'",
-    "moral_ru": "Умейте видеть благо в том, чего природа предусмотрительно не допустила."
+    "moral_ru": "Умейте видеть благо в том, чего природа предусмотрительно не допустила.",
+    "moral_es": "Aprende a agradecer la fortuna de aquello que la naturaleza sabiamente evitó.",
+    "moral_en": "Learn to feel grateful for misfortunes nature wisely kept from happening."
   },
   {
     "id": "anecdote_11",
@@ -129,7 +149,9 @@
     "text_ru": "Ходжа купил три фунта мяса для ужина, но жена всё съела с подругами, а мужу сказала: «Мясо утащил наш кот». Насреддин взял кота, положил на весы — стрелка показала ровно три фунта. «Если это кот, то где мясо? А если это мясо, то где же кот?»",
     "text_es": "Hodja compró tres libras de carne para cenar, pero su esposa se la comió y mintió: «El gato se la llevó». Hodja tomó al gato y lo pesó: pesaba exactamente tres libras. «Si esto es el gato, ¿dónde está la carne? Y si esto es la carne, ¿dónde está el gato?»",
     "text_en": "Hodja bought three pounds of meat, but his wife ate it with guests and blamed the cat. Hodja put the cat on the scale: exactly three pounds. 'If this is the cat, where is the meat? And if this is the meat, where is the cat?'",
-    "moral_ru": "Математическая логика беспощадна к нелепым оправданиям."
+    "moral_ru": "Математическая логика беспощадна к нелепым оправданиям.",
+    "moral_es": "La lógica exacta desarma al instante las excusas absurdas.",
+    "moral_en": "Simple arithmetic leaves no room for flimsy excuses."
   },
   {
     "id": "anecdote_12",
@@ -141,7 +163,9 @@
     "text_ru": "У Ходжи украли осла. Он ходил по базару и громко возносил хвалу небесам. «Ты потерял осла, чему же ты радуешься?» — изумились люди. «Слава Всевышнему, что меня не было на нем в тот момент, иначе я бы тоже пропал!»",
     "text_es": "Le robaron el asno a Hodja. Iba por el bazar dando gracias a Dios a viva voz. «¿Por qué agradeces si perdiste tu burro?» «¡Alabado sea el Cielo porque yo no iba montado en él, o me habrían robado a mí también!»",
     "text_en": "Hodja's donkey was stolen. He walked the market shouting prayers of thanks. 'Why celebrate your loss?' asked friends. 'Thank Heaven I wasn't riding it at the time, or I would be lost too!'",
-    "moral_ru": "Оптимизм — это способность найти спасение даже в досадной пропаже."
+    "moral_ru": "Оптимизм — это способность найти спасение даже в досадной пропаже.",
+    "moral_es": "El optimismo es hallar un motivo de alivio incluso en la pérdida.",
+    "moral_en": "True optimism finds a silver lining hidden inside any misfortune."
   },
   {
     "id": "anecdote_13",
@@ -153,7 +177,9 @@
     "text_ru": "Заглянув ночью в колодец, Ходжа увидел отражение луны: «Бедняжка, как же ты упала в воду!» Он опустил веревку с крюком, крюк зацепился за камень. Ходжа дернул изо всех сил, веревка лопнула, он упал на спину, взглянул в небо и увидел луну: «Хоть спину отшиб, зато луну на небо вернул!»",
     "text_es": "Mirando en un pozo de noche, Hodja vio la luna: «¡Pobrecita, caíste al agua!» Lanzó una soga con gancho que se trabó en una piedra. Tiró con fuerza, la soga se rompió y cayó de espaldas. Miró al cielo y vio la luna: «¡Me rompí la espalda, pero devolví la luna al cielo!»",
     "text_en": "Looking into a well at night, Hodja saw the moon's reflection: 'Poor moon, you fell in!' He lowered a rope with a hook. It caught a stone; he pulled hard, the rope snapped, and he fell on his back. Looking up, he saw the moon in the sky: 'Bruised my back, but I saved the moon!'",
-    "moral_ru": "Многие подвиги человечества начинаются с искренней ошибки и заканчиваются радостным триумфом."
+    "moral_ru": "Многие подвиги человечества начинаются с искренней ошибки и заканчиваются радостным триумфом.",
+    "moral_es": "Muchas hazañas nacen de un error sincero y terminan en un triunfo alegre.",
+    "moral_en": "Many grand triumphs begin as earnest blunders and end in joyful pride."
   },
   {
     "id": "anecdote_14",
@@ -165,7 +191,9 @@
     "text_ru": "Ученики спросили Насреддина: «Учитель, где лучше идти во время похоронной процессии — впереди гроба или позади него?» Ходжа ответил: «Главное — не находись внутри гроба, а в остальном иди где угодно».",
     "text_es": "Los discípulos preguntaron: «Maestro, ¿dónde conviene caminar en el cortejo fúnebre: delante o detrás del ataúd?» Hodja contestó: «Lo único importante es no estar dentro del ataúd; fuera de él, camina donde gustes».",
     "text_en": "Disciples asked: 'Master, should one walk ahead of the coffin or behind it during a funeral?' Hodja replied: 'As long as you are not inside the coffin, walk wherever you please.'",
-    "moral_ru": "Цените дар жизни выше формальностей ритуала."
+    "moral_ru": "Цените дар жизни выше формальностей ритуала.",
+    "moral_es": "Valora el don de la vida por encima de las formalidades del ritual.",
+    "moral_en": "Cherish the gift of being alive above petty ritual formalities."
   },
   {
     "id": "anecdote_15",
@@ -177,7 +205,9 @@
     "text_ru": "Неграмотный путник принес Ходже письмо на чужом наречии и попросил прочесть. Ходжа не смог разобрать почерк и вернул письмо. Путник упрекнул: «И тебе не стыдно носить такую огромную ученую чалму?!» Насреддин снял чалму, нахлобучил ее на путника и сказал: «Раз дело только в чалме — надень ее и читай сам!»",
     "text_es": "Un viajero analfabeto pidió a Hodja leer una carta en letra ilegible. Hodja no pudo descifrarla. El hombre le reprochó: «¡Debería darte vergüenza llevar semejante turbante de sabio!» Hodja le puso el turbante en la cabeza: «Si el saber está en el turbante, ¡póntelo y léela tú mismo!»",
     "text_en": "An illiterate traveler asked Hodja to read an illegible letter in a foreign script. Hodja couldn't decipher it. The man scoffed: 'Shame on you for wearing such a great scholar's turban!' Hodja placed the turban on the traveler's head: 'If wisdom is in the turban, wear it and read it yourself!'",
-    "moral_ru": "Одежда не дарует мудрости тому, кто ждет чуда от внешнего вида."
+    "moral_ru": "Одежда не дарует мудрости тому, кто ждет чуда от внешнего вида.",
+    "moral_es": "El atuendo no otorga sabiduría a quien confunde la apariencia con el saber.",
+    "moral_en": "Clothing grants no wisdom to those who mistake status symbols for learning."
   },
   {
     "id": "anecdote_16",
@@ -189,7 +219,9 @@
     "text_ru": "В старинной книге Насреддин прочел: «У кого лоб мал, а борода длиннее двух кулаков — тот глупец». Увидев в зеркале длинную бороду, он испугался разоблачения и решил укоротить ее свечой. Борода вспыхнула, опалила лицо и брови. Залечив ожоги, Ходжа написал на полях книги: «Проверено на практике. Истинная правда».",
     "text_es": "En un viejo tratado leyó: «Quien tiene frente corta y barba de más de dos puños es un necio». Al mirarse al espejo, intentó recortarla con una vela encendida; el fuego le chamuscó la cara. Ya curado, anotó al margen del libro: «Comprobado en la práctica: es pura verdad».",
     "text_en": "In an old book Hodja read: 'He whose forehead is narrow and beard exceeds two fists is a fool.' Looking in the mirror, he tried to trim his long beard with a candle, burning his eyebrows and chin. Once healed, he wrote in the margin: 'Tested in practice: absolutely true.'",
-    "moral_ru": "Ирония самопознания: пытаясь скрыть предполагаемую глупость, человек совершает её наяву."
+    "moral_ru": "Ирония самопознания: пытаясь скрыть предполагаемую глупость, человек совершает её наяву.",
+    "moral_es": "Ironía del autoconocimiento: al intentar ocultar una torpeza supuesta, la confirmamos.",
+    "moral_en": "Self-irony at its best: trying to hide foolishness often proves it."
   },
   {
     "id": "anecdote_17",
@@ -201,7 +233,9 @@
     "text_ru": "Ходжа полез на высокое дерево за дровами, тщательно сняв и засунув сапоги за пазуху. Прохожие крикнули: «Зачем тебе на ветках сапоги?» — «Вдруг там наверху есть дорога, а я разутый?» — ответил мудрец.",
     "text_es": "Hodja subió a un árbol alto tras meterse sus botas bajo la camisa. La gente le gritó: «¿Para qué llevas botas arriba de las ramas?» «¿Y si allá arriba hay un camino y ando descalzo?»",
     "text_en": "Hodja climbed a tall tree carrying his boots inside his shirt. Passersby yelled: 'Why take boots into a tree?' 'What if there is a highway up there and I find myself barefoot?'",
-    "moral_ru": "Мудрец всегда готов к неожиданному повороту судьбы, даже там, где его не ждут."
+    "moral_ru": "Мудрец всегда готов к неожиданному повороту судьбы, даже там, где его не ждут.",
+    "moral_es": "El sabio se prepara para giros inesperados incluso donde nadie ve un camino.",
+    "moral_en": "A wise traveler stays prepared for sudden roads even atop a tree."
   },
   {
     "id": "anecdote_18",
@@ -213,7 +247,9 @@
     "text_ru": "Осел Насреддина нес мешки с солью, оступился в реке, соль растворилась, и ноша стала легкой. На следующий день хитрый осел нарочно упал в воду с мешками шерсти. Шерсть намокла и потяжелела втрое. Насреддин похлопал осла: «Думал, каждый раз купание облегчает жизнь?»",
     "text_es": "El asno de Hodja llevaba sal, cayó al río y la sal se disolvió, aligerando la carga. Al día siguiente el asno se lanzó al agua llevando fardos de lana. La lana se empapó y pesó el triple. Hodja le dijo: «¿Creías que todo baño alivia la carga?»",
     "text_en": "Hodja's donkey carried salt, slipped into a river, and the salt dissolved, lightening the load. Next day the clever beast intentionally fell into water carrying wool. The soaked wool weighed three times as much. Hodja smiled: 'Did you think every bath makes life easier?'",
-    "moral_ru": "Старый трюк в новых обстоятельствах часто оборачивается тройной тяжестью."
+    "moral_ru": "Старый трюк в новых обстоятельствах часто оборачивается тройной тяжестью.",
+    "moral_es": "Un viejo truco aplicado sin pensar suele volver tres veces más pesado.",
+    "moral_en": "Blindly repeating an old trick in new circumstances triples the burden."
   },
   {
     "id": "anecdote_19",
@@ -225,7 +261,9 @@
     "text_ru": "Кредитор требовал с Ходжи долг. «Я посадил вдоль дороги терновник, — объяснил Ходжа. — Мимо погонят овец, шерсть зацепится за колючки, я соберу ее, спряду нитки, продам на базаре и верну долг». Кредитор расхохотался. «Вот видишь, — улыбнулся Ходжа, — долг еще не выплачен, а ты уже радуешься наличным!»",
     "text_es": "Un acreedor exigía el pago a Hodja. «Planté zarzas junto al camino. Pasarán rebaños de ovejas, la lana quedará atrapada, la hilaré, la venderé y te pagaré». El acreedor estalló en risas. «¿Ves? ¡Aún no te pago y ya ríes con el dinero en mano!»",
     "text_en": "A creditor demanded payment from Hodja. 'I planted brambles along the road. Sheep will pass by, their wool will catch on the thorns, I will spin it, sell the yarn, and repay you.' The creditor burst out laughing. 'See?' smiled Hodja. 'The debt isn't paid yet, but you already celebrate the cash!'",
-    "moral_ru": "Радость от надежды порой заразительнее самого богатства."
+    "moral_ru": "Радость от надежды порой заразительнее самого богатства.",
+    "moral_es": "La alegría de una buena esperanza a veces contagia más que el oro mismo.",
+    "moral_en": "The joy of hopeful imagination can be sweeter than cash in hand."
   },
   {
     "id": "anecdote_20",
@@ -237,7 +275,9 @@
     "text_ru": "Ночью вор вынес из дома Насреддина почти все пожитки. Ходжа молча собрал остатки одеял, пошел за вором и вошел в его дом. Вор поразился: «Ты зачем здесь?» — «Как зачем? Разве мы не сюда сегодня переезжаем?»",
     "text_es": "Un ladrón vació de noche la humilde casa de Hodja. Hodja recogió sus mantas restantes y lo siguió hasta su casa. El ladrón preguntó asombrado: «¿Qué haces aquí?» «¿Cómo qué? ¿Acaso no nos mudábamos hoy a vivir aquí?»",
     "text_en": "A thief carried away most of Hodja's belongings in the night. Hodja picked up his remaining blanket and followed the thief into his home. The thief was shocked: 'What are you doing here?' 'Why, aren't we moving in here together tonight?'",
-    "moral_ru": "Невозмутимость способна обезоружить даже дерзкого грабителя."
+    "moral_ru": "Невозмутимость способна обезоружить даже дерзкого грабителя.",
+    "moral_es": "La serenidad y el humor desarman incluso al ladrón más descarado.",
+    "moral_en": "Calm wit can disarm even the boldest midnight burglar."
   },
   {
     "id": "anecdote_21",
@@ -249,7 +289,9 @@
     "text_ru": "Жена Насреддина хлебнула горячего супа, обожглась и заплакала. «Почему ты плачешь?» — «Вспомнила покойную матушку, она так любила этот суп». Ходжа зачерпнул полную ложку, тоже обжегся до слез и вскрикнул: «А я плачу о том, почему твоя матушка забрала тебя не с собой!»",
     "text_es": "La esposa de Hodja probó una sopa hirviendo, se quemó y lloró. «¿Por qué lloras?» «Recordé a mi difunta madre, que amaba esta sopa». Hodja tomó una cucharada caliente, se quemó hasta las lágrimas y exclamó: «¡Y yo lloro porque tu madre no te llevó con ella al morir!»",
     "text_en": "Hodja's wife took a sip of scalding soup, burned her tongue, and wept. 'Why weep?' 'I remembered my late mother who loved this soup.' Hodja took a huge sip, burned his tongue to tears and gasped: 'I weep because your mother didn't take you with her!'",
-    "moral_ru": "Семейное остроумие крепче любой острой приправы."
+    "moral_ru": "Семейное остроумие крепче любой острой приправы.",
+    "moral_es": "El ingenio familiar pica más fuerte que la pimienta más brava.",
+    "moral_en": "Quick household wit bites sharper than the hottest soup."
   },
   {
     "id": "anecdote_22",
@@ -261,7 +303,9 @@
     "text_ru": "К судье Насреддину пришел истец и изложил жалобу. «Ты прав», — сказал Ходжа. Пришел ответчик и привел свои доводы. «И ты прав», — сказал Ходжа. Жена упрекнула мужа: «Как могут оба быть правы?» Ходжа подумал и ответил: «И ты тоже права, жена!»",
     "text_es": "Un demandante expuso su queja ante el juez Hodja. «Tienes razón», dijo Hodja. Luego el acusado dio sus argumentos. «Tú también tienes razón», dijo Hodja. Su esposa le increpó: «¿Cómo pueden tener razón ambos?» Hodja sonrió: «¡Y tú también tienes razón, mujer!»",
     "text_en": "A plaintiff argued his case before Judge Hodja. 'You are right', ruled Hodja. The defendant then presented his side. 'You are right too', ruled Hodja. His wife objected: 'How can both sides be right?' Hodja paused: 'And you, wife, are right too!'",
-    "moral_ru": "Каждая сторона обладает частицей правды, пока не вмешается абсолютный покой."
+    "moral_ru": "Каждая сторона обладает частицей правды, пока не вмешается абсолютный покой.",
+    "moral_es": "Cada postura guarda una chispa de verdad cuando se busca la paz.",
+    "moral_en": "Every side holds a piece of truth when peace matters more than winning."
   },
   {
     "id": "anecdote_23",
@@ -273,7 +317,9 @@
     "text_ru": "Ночью Ходжа услышал шорох в саду, увидел белую тень, пустил стрелу и попал точно в цель. Утром он вышел в сад и увидел свою сохнущую белую рубаху с дырой от стрелы. Насреддин пал на колени: «О Всевышний, как ты милосерден, что меня не было внутри этой рубахи!»",
     "text_es": "De noche Hodja vio una figura blanca en el huerto, disparó su arco y dio en el blanco. Por la mañana vio su propia camisa blanca colgada, atravesada por la flecha. Cayó de rodillas: «¡Alabado sea el Creador porque yo no la llevaba puesta!»",
     "text_en": "In the dark Hodja saw a white figure in the yard, shot his arrow, and hit the mark. At dawn he found his own white shirt drying on the line with an arrow hole. He fell to his knees: 'Praise be that I was not inside that shirt!'",
-    "moral_ru": "Страх создает врагов из нашей собственной одежды."
+    "moral_ru": "Страх создает врагов из нашей собственной одежды.",
+    "moral_es": "El miedo inventa enemigos incluso con nuestra propia sombra y ropa.",
+    "moral_en": "Fear turns our own hanging shirts into midnight phantoms."
   },
   {
     "id": "anecdote_24",
@@ -285,7 +331,9 @@
     "text_ru": "Во сне Насреддин торговался со скупым купцом, который давал ему лишь девять золотых, а Ходжа требовал десять. В разгар спора Насреддин проснулся и увидел пустую ладонь. Он быстро зажмурился, протянул руку во тьму и закричал: «Ладно, ладно, давай хотя бы девять!»",
     "text_es": "En sueños Hodja regateaba con un mercader que solo le ofrecía nueve monedas de oro mientras él pedía diez. Se despertó furioso con la mano vacía. Rápidamente cerró los ojos, estiró la mano y gritó: «¡Está bien, dame las nueve!»",
     "text_en": "In a dream, Hodja was bargaining with a merchant who offered nine gold coins while Hodja demanded ten. Hodja woke up to an empty hand. He quickly shut his eyes tight, reached out into the dark and yelled: 'Fine, fine! Give me the nine!'",
-    "moral_ru": "Упущенная выгода учит соглашаться на разумный компромисс."
+    "moral_ru": "Упущенная выгода учит соглашаться на разумный компромисс.",
+    "moral_es": "La oportunidad perdida enseña a valorar un acuerdo razonable.",
+    "moral_en": "Missed fortune teaches us the charm of a timely compromise."
   },
   {
     "id": "anecdote_25",
@@ -297,6 +345,8 @@
     "text_ru": "Дети попросили Насреддина поровну разделить мешок грецких орехов: «Раздели по-божьему или по-человечески?» — «Конечно, по-божьему!» Насреддин отдал одному мальчику полную горсть, другому три ореха, третьему ничего, а четвертому еще и отвесил подзатыльник. «По-божьему в мире всё так: кому густо, кому пусто, а кому и шишка!»",
     "text_es": "Unos niños pidieron a Hodja repartir un saco de nueces: «¿Repartes a la manera humana o a la manera divina?» «¡A la divina!» Hodja dio a uno un gran puñado, a otro dos nueces, a otro ninguna y al último un coscorrón. «Así reparte el destino en este mundo: a unos mucho, a otros nada y a otros golpes».",
     "text_en": "Boys asked Hodja to divide a bag of walnuts: 'Will you divide by human law or divine law?' 'Divine, of course!' Hodja gave one boy a huge mound, another two nuts, another none, and gave the fourth a cuff on the ear. 'By divine law in this world, some get plenty, some get nothing, and some get a knock!'",
-    "moral_ru": "Ирония судьбы напоминает человеку о смирении и благодарности."
+    "moral_ru": "Ирония судьбы напоминает человеку о смирении и благодарности.",
+    "moral_es": "La ironía del destino nos recuerda la humildad y la gratitud.",
+    "moral_en": "Fortune's strange twists remind us of humility and gratitude."
   }
 ]

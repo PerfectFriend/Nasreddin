@@ -180,7 +180,11 @@ class ComicRepository(private val context: Context) {
                     AppLanguage.RUSSIAN -> obj.optString("text_ru")
                 }
 
-                val moral = if (lang == AppLanguage.RUSSIAN) obj.optString("moral_ru") else ""
+                val moral = when (lang) {
+                    AppLanguage.RUSSIAN -> obj.optString("moral_ru")
+                    AppLanguage.SPANISH -> obj.optString("moral_es")
+                    AppLanguage.ENGLISH -> obj.optString("moral_en")
+                }
 
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
 

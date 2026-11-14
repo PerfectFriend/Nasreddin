@@ -341,11 +341,11 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun importFolder(uri: Uri) {
         viewModelScope.launch {
+            val lang = _uiState.value.currentLanguage
             _uiState.update { it.copy(isLoading = true) }
             val imported = withContext(Dispatchers.IO) {
-                FolderImporter.importFromFolderTreeUri(getApplication(), uri)
+                FolderImporter.importFromFolderTreeUri(getApplication(), uri, lang)
             }
-            val lang = _uiState.value.currentLanguage
             if (imported != null && imported.pages.isNotEmpty()) {
                 repository.addCustomComic(imported)
                 _uiState.update {
@@ -369,11 +369,11 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
     fun importMultipleImages(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
+            val lang = _uiState.value.currentLanguage
             _uiState.update { it.copy(isLoading = true) }
             val imported = withContext(Dispatchers.IO) {
-                FolderImporter.importFromSelectedUris(getApplication(), uris)
+                FolderImporter.importFromSelectedUris(getApplication(), uris, lang)
             }
-            val lang = _uiState.value.currentLanguage
             if (imported != null && imported.pages.isNotEmpty()) {
                 repository.addCustomComic(imported)
                 _uiState.update {

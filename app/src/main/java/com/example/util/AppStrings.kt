@@ -572,4 +572,46 @@ object AppStrings {
         AppLanguage.SPANISH -> "Globos de texto"
         AppLanguage.ENGLISH -> "Speech bubbles"
     }
+
+    fun importedComicFallbackTitle(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Импортированный комикс"
+        AppLanguage.SPANISH -> "Cómic importado"
+        AppLanguage.ENGLISH -> "Imported Comic"
+    }
+
+    fun importedPageTitle(lang: AppLanguage, pageNumber: Int, fileName: String): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Стр. $pageNumber: $fileName"
+        AppLanguage.SPANISH -> "Pág. $pageNumber: $fileName"
+        AppLanguage.ENGLISH -> "Page $pageNumber: $fileName"
+    }
+
+    fun importedFolderSubtitle(lang: AppLanguage, pageCount: Int): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Папка ($pageCount стр.)"
+        AppLanguage.SPANISH -> "Carpeta ($pageCount págs.)"
+        AppLanguage.ENGLISH -> "Folder ($pageCount pages)"
+    }
+
+    fun importedFolderDescription(lang: AppLanguage, folderName: String): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Импортировано из папки: $folderName"
+        AppLanguage.SPANISH -> "Importado de la carpeta: $folderName"
+        AppLanguage.ENGLISH -> "Imported from folder: $folderName"
+    }
+
+    fun newImportedComicTitle(lang: AppLanguage, pageCount: Int): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Новый комикс ($pageCount стр.)"
+        AppLanguage.SPANISH -> "Nuevo cómic ($pageCount págs.)"
+        AppLanguage.ENGLISH -> "New Comic ($pageCount pages)"
+    }
+
+    fun customSelectionSubtitle(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Пользовательский выбор файлов"
+        AppLanguage.SPANISH -> "Selección de archivos"
+        AppLanguage.ENGLISH -> "Custom File Selection"
+    }
+
+    fun customSelectionDescription(lang: AppLanguage, pageCount: Int): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Комикс сформирован из $pageCount выбранных изображений"
+        AppLanguage.SPANISH -> "Cómic creado con $pageCount imágenes seleccionadas"
+        AppLanguage.ENGLISH -> "Comic created from $pageCount selected images"
+    }
 }

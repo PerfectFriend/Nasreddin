@@ -82,6 +82,56 @@ internal fun computeFittedArtworkRect(
 }
 
 /**
+ * Computed visual typography parameters for a single comic balloon so verbose
+ * RU/ES sentences remain legible without clipping on narrow smartphone screens.
+ */
+internal data class BubbleTypographySpec(
+    val fontSizeSp: Float,
+    val lineHeightSp: Float,
+    val maxLines: Int,
+    val horizontalPaddingDp: Float
+)
+
+/**
+ * Computes responsive font size, line height, and line budget based on character length,
+ * available balloon width, and bubble style (dialogue balloon vs narration plaque).
+ */
+internal fun computeAdaptiveBubbleTypography(
+    textLength: Int,
+    maxBubbleWidthDp: Float,
+    style: BubbleStyle
+): BubbleTypographySpec {
+    val isCaption = style == BubbleStyle.NARRATION
+    val baseFont = if (isCaption) 11.5f else 12.5f
+    val baseLine = if (isCaption) 15.0f else 16.0f
+    val narrowFactor = if (maxBubbleWidthDp < 210f) 0.92f else 1.0f
+
+    val lengthScale = when {
+        textLength > 150 -> 0.84f
+        textLength > 105 -> 0.90f
+        textLength > 70 -> 0.95f
+        else -> 1.0f
+    }
+
+    val combinedScale = (narrowFactor * lengthScale).coerceAtLeast(0.80f)
+    val fontSizeSp = (baseFont * combinedScale).coerceAtLeast(9.5f)
+    val lineHeightSp = (baseLine * combinedScale).coerceAtLeast(12.2f)
+    val maxLines = when {
+        textLength > 140 -> 7
+        textLength > 85 -> 6
+        else -> 5
+    }
+    val horizontalPaddingDp = if (maxBubbleWidthDp < 200f) 9f else 12f
+
+    return BubbleTypographySpec(
+        fontSizeSp = fontSizeSp,
+        lineHeightSp = lineHeightSp,
+        maxLines = maxLines,
+        horizontalPaddingDp = horizontalPaddingDp
+    )
+}
+
+/**
  * Dynamically renders comic speech balloons, thought clouds, and narration captions
  * anchored inside the fitted comic artwork rectangle. Automatically scales with
  * [ZoomableComicImage] pinch-to-zoom and panning gestures.
@@ -117,6 +167,7 @@ fun ComicBubbleOverlay(
             bubbles.forEach { bubble ->
                 val maxBubbleWidthDp = (fittedWidthDp * bubble.widthFraction.coerceIn(0.32f, 0.94f))
                     .coerceAtLeast(120.dp)
+                val cappedWidthDp = min(maxBubbleWidthDp.value, 360f)
 
                 val alignmentBiasX = bubble.centerX.coerceIn(0.08f, 0.92f)
                 val alignmentBiasY = bubble.centerY.coerceIn(0.08f, 0.92f)
@@ -134,9 +185,12 @@ fun ComicBubbleOverlay(
                 Box(
                     modifier = Modifier
                         .align(align)
-                        .widthIn(max = min(maxBubbleWidthDp.value, 360f).dp)
+                        .widthIn(max = cappedWidthDp.dp)
                 ) {
-                    ComicBalloonView(bubble = bubble)
+                    ComicBalloonView(
+                        bubble = bubble,
+                        maxBubbleWidthDp = cappedWidthDp
+                    )
                 }
             }
         }
@@ -144,7 +198,10 @@ fun ComicBubbleOverlay(
 }
 
 @Composable
-private fun ComicBalloonView(bubble: SpeechBubble) {
+private fun ComicBalloonView(
+    bubble: SpeechBubble,
+    maxBubbleWidthDp: Float
+) {
     val fillColor = when (bubble.style) {
         BubbleStyle.SPEECH -> Color(0xFFFFF8E7)
         BubbleStyle.NARRATION -> Color(0xE60D132B)
@@ -160,6 +217,12 @@ private fun ComicBalloonView(bubble: SpeechBubble) {
         BubbleStyle.NARRATION -> Color(0xFFFFF7E2)
         BubbleStyle.THOUGHT -> Color(0xFF062933)
     }
+
+    val typographySpec = computeAdaptiveBubbleTypography(
+        textLength = bubble.text.length,
+        maxBubbleWidthDp = maxBubbleWidthDp,
+        style = bubble.style
+    )
 
     val isCaption = bubble.style == BubbleStyle.NARRATION
     val cornerDp = if (isCaption) 10.dp else 16.dp
@@ -238,10 +301,10 @@ private fun ComicBalloonView(bubble: SpeechBubble) {
         Column(
             modifier = Modifier
                 .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    top = 8.dp + tailReserveTop,
-                    bottom = 8.dp + tailReserveBottom
+                    start = typographySpec.horizontalPaddingDp.dp,
+                    end = typographySpec.horizontalPaddingDp.dp,
+                    top = 7.dp + tailReserveTop,
+                    bottom = 7.dp + tailReserveBottom
                 )
         ) {
             if (!bubble.speaker.isNullOrBlank()) {
@@ -256,12 +319,12 @@ private fun ComicBalloonView(bubble: SpeechBubble) {
             Text(
                 text = bubble.text,
                 color = textColor,
-                fontSize = if (isCaption) 11.5.sp else 12.5.sp,
-                lineHeight = if (isCaption) 15.sp else 16.sp,
+                fontSize = typographySpec.fontSizeSp.sp,
+                lineHeight = typographySpec.lineHeightSp.sp,
                 fontWeight = if (isCaption) FontWeight.Medium else FontWeight.Bold,
                 fontStyle = if (bubble.style == BubbleStyle.THOUGHT) FontStyle.Italic else FontStyle.Normal,
                 textAlign = if (isCaption) TextAlign.Start else TextAlign.Center,
-                maxLines = 5,
+                maxLines = typographySpec.maxLines,
                 overflow = TextOverflow.Ellipsis
             )
         }

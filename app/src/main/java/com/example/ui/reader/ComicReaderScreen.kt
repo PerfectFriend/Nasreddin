@@ -40,7 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
@@ -412,7 +411,7 @@ fun ComicReaderScreen(
                                             modifier = Modifier.testTag("reader_prev_page")
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.ArrowBack,
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                                 contentDescription = AppStrings.prevPage(currentLanguage),
                                                 tint = if (currentPageIdx > 0) VanGoghStarGold else Color.Gray.copy(alpha = 0.3f)
                                             )

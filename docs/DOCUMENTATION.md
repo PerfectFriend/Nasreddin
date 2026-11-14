@@ -19,9 +19,9 @@
 1. **Minimum 4 Pages per Story (`pages.size >= 4`):**
    - **Episode #1:** 4 dedicated full-page illustrations per language.
    - **Episodes #2–#10:** Localized 2×2 comic sheets dynamically cropped into **4 individual fullscreen panel pages** (`PanelCrop` fractional rects) using `BitmapRegionDecoder` + two-pass dimension decoding + thread-safe `LruCache(32)`.
-   - **Episodes #11–#25:** Expanded to 4 pages each backed by bundled narrative and moral scripts.
+   - **Episodes #11–#25:** Powered by the v1.1 universal text-free template (`img_universal_hodja_template`) paired with dynamic localized `SpeechBubble` overlays (`StoryBubbleComposer` + `ComicBubbleOverlay` with adaptive typography for narrow screens) and localized `RU / ES / EN` morals stored in `nasreddin_anecdotes_vault.json`.
 2. **Strict Single-Language Catalog Filtering:**
-   - `ComicRepository.loadAllComics()` exposes only built-in stories matching the active `AppLanguage` (plus user-imported SAF folders). Switching languages reloads localized titles, descriptions, drawables, and reader strings immediately.
+   - `ComicRepository.loadAllComics()` exposes only built-in stories matching the active `AppLanguage` (plus user-imported SAF folders whose labels also localize via `AppStrings`). Switching languages reloads localized titles, descriptions, drawables, bubbles, and reader strings immediately.
 3. **Hybrid Monetization Model:**
    - **Stories 1–10:** 100% Free, ad-free.
    - **Stories 11–25:**
