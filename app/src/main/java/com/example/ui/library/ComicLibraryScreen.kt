@@ -90,7 +90,7 @@ import com.example.ui.theme.VanGoghStarGold
 import com.example.util.AppStrings
 
 /**
- * Primary catalog home screen displaying the 25 localized Hodja Nasreddin episodes,
+ * Primary catalog home screen displaying the 50 localized Hodja Nasreddin episodes,
  * Hybrid Monetization status banner, SAF folder/image importers, and user-added folders.
  *
  * Reviewer notes:
@@ -175,7 +175,7 @@ fun ComicLibraryScreen(
 
                 // Hybrid Premium / Ad-Supported Banner
                 item {
-                    val builtInCount = comics.count { it.isBuiltIn }.coerceAtLeast(25)
+                    val builtInCount = comics.count { it.isBuiltIn }.coerceAtLeast(50)
                     val unlockedCount = if (isPremiumUnlocked || seriesUnlocked) {
                         builtInCount
                     } else {

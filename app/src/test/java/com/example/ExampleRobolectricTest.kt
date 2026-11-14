@@ -37,20 +37,20 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `vault loads 25 anecdotes with 10 free and 15 premium`() {
+    fun `vault loads 50 anecdotes with 10 free and 40 premium`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         val comics = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(25, comics.size)
+        assertEquals(50, comics.size)
 
         // Verify first 10 are free
         val freeStories = comics.filter { it.isFree }
         assertEquals(10, freeStories.size)
 
-        // Verify remaining 15 are premium
+        // Verify remaining 40 are premium
         val premiumStories = comics.filter { !it.isFree }
-        assertEquals(15, premiumStories.size)
+        assertEquals(40, premiumStories.size)
     }
 
     @Test
@@ -65,26 +65,26 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `strict language filtering applies across all 25 stories`() {
+    fun `strict language filtering applies across all 50 stories`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         // Russian selection
         repository.setLanguage(AppLanguage.RUSSIAN)
         val ruStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(25, ruStories.size)
+        assertEquals(50, ruStories.size)
         assertTrue(ruStories.all { it.language == AppLanguage.RUSSIAN })
 
         // Spanish selection
         repository.setLanguage(AppLanguage.SPANISH)
         val esStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(25, esStories.size)
+        assertEquals(50, esStories.size)
         assertTrue(esStories.all { it.language == AppLanguage.SPANISH })
 
         // English selection
         repository.setLanguage(AppLanguage.ENGLISH)
         val enStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(25, enStories.size)
+        assertEquals(50, enStories.size)
         assertTrue(enStories.all { it.language == AppLanguage.ENGLISH })
     }
 
@@ -123,14 +123,14 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `all 25 stories have at least 4 pages and episodes 2 to 10 split into 4 panel crops across RU ES and EN`() {
+    fun `all 50 stories have at least 4 pages and episodes 2 to 10 split into 4 panel crops across RU ES and EN`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val allBuiltIn = repository.comics.value.filter { it.isBuiltIn }
-            assertEquals(25, allBuiltIn.size)
+            assertEquals(50, allBuiltIn.size)
 
             // Every story must strictly have >= 4 pages
             for (story in allBuiltIn) {
@@ -289,33 +289,45 @@ class ExampleRobolectricTest {
 
         val repository = ComicRepository(context)
 
-        // Must fall back to English default and still serve all 25 built-in stories safely
+        // Must fall back to English default and still serve all 50 built-in stories safely
         assertEquals(AppLanguage.ENGLISH, repository.currentLanguage.value)
         val builtIn = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(25, builtIn.size)
+        assertEquals(50, builtIn.size)
         assertEquals(0, repository.comics.value.count { !it.isBuiltIn })
     }
 
     @Test
-    fun `stories 11 to 25 share one universal text-free template across RU ES EN with localized speech bubbles`() {
+    fun `stories 11 to 50 share 3 thematic text-free templates across RU ES EN with localized speech bubbles`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
+        val expectedUniversalDrawables = setOf(
+            R.drawable.img_universal_hodja_template,
+            R.drawable.img_universal_hodja_teahouse,
+            R.drawable.img_universal_hodja_night
+        )
         val collectTitlesByStory = mutableMapOf<AppLanguage, List<String>>()
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val premiumStories = repository.comics.value.filter { it.isBuiltIn && it.storyNumber >= 11 }
-            assertEquals(15, premiumStories.size)
+            assertEquals(40, premiumStories.size)
+
+            val usedDrawables = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
+            assertEquals(
+                "Stories 11..50 ($lang) should utilize all 3 thematic universal templates",
+                expectedUniversalDrawables,
+                usedDrawables
+            )
 
             val firstBubbleTexts = mutableListOf<String>()
             for (story in premiumStories) {
-                assertEquals(R.drawable.img_universal_hodja_template, story.coverDrawableResId)
+                assertTrue(story.coverDrawableResId in expectedUniversalDrawables)
                 assertEquals(4, story.pages.size)
                 assertEquals(4, story.pages.mapNotNull { it.panelCrop }.toSet().size)
 
                 for (page in story.pages) {
-                    assertEquals(R.drawable.img_universal_hodja_template, page.drawableResId)
+                    assertEquals(story.coverDrawableResId, page.drawableResId)
                     assertTrue(
                         "Story ${story.storyNumber} ($lang) page ${page.sequenceNumber} must have dynamic bubbles",
                         page.bubbles.isNotEmpty()
@@ -331,7 +343,7 @@ class ExampleRobolectricTest {
             collectTitlesByStory[lang] = firstBubbleTexts
         }
 
-        // Same universal artwork, yet completely distinct localized bubble text per language
+        // Same 3 universal artwork sheets, yet completely distinct localized bubble text per language
         assertNotEquals(collectTitlesByStory[AppLanguage.RUSSIAN], collectTitlesByStory[AppLanguage.ENGLISH])
         assertNotEquals(collectTitlesByStory[AppLanguage.SPANISH], collectTitlesByStory[AppLanguage.ENGLISH])
     }
@@ -457,5 +469,43 @@ class ExampleRobolectricTest {
         assertEquals("Cómic importado", AppStrings.importedComicFallbackTitle(AppLanguage.SPANISH))
         assertEquals("Imported Comic", AppStrings.importedComicFallbackTitle(AppLanguage.ENGLISH))
         assertEquals("Импортированный комикс", AppStrings.importedComicFallbackTitle(AppLanguage.RUSSIAN))
+    }
+
+    @Test
+    fun `new teahouse and night templates decode panels cleanly and ad batches unlock up to story 50`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+        val crop = PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f)
+
+        val teahousePanel = ComicPanelCropCache.getOrDecodePanel(
+            context.resources,
+            R.drawable.img_universal_hodja_teahouse,
+            crop
+        )
+        val nightPanel = ComicPanelCropCache.getOrDecodePanel(
+            context.resources,
+            R.drawable.img_universal_hodja_night,
+            crop
+        )
+        assertNotNull(teahousePanel)
+        assertNotNull(nightPanel)
+        assertTrue(teahousePanel!!.width > 0 && teahousePanel.height > 0)
+        assertTrue(nightPanel!!.width > 0 && nightPanel.height > 0)
+
+        // Verify explicit theme mapping and cyclic fallback when theme is absent
+        assertEquals(R.drawable.img_universal_hodja_teahouse, repository.resolveUniversalTemplateDrawable("teahouse", 99))
+        assertEquals(R.drawable.img_universal_hodja_night, repository.resolveUniversalTemplateDrawable("night", 99))
+        assertEquals(R.drawable.img_universal_hodja_template, repository.resolveUniversalTemplateDrawable("bazaar", 99))
+        assertEquals(R.drawable.img_universal_hodja_teahouse, repository.resolveUniversalTemplateDrawable(null, 2))
+
+        // Ad batches advance sequentially past 25 all the way to 50
+        var unlockedMax = repository.adUnlockedMaxStory.value
+        assertEquals(10, unlockedMax)
+        repeat(8) {
+            unlockedMax = repository.unlockNextAdBatch()
+        }
+        assertEquals(50, unlockedMax)
+        // Must cap cleanly at catalog max 50
+        assertEquals(50, repository.unlockNextAdBatch())
     }
 }

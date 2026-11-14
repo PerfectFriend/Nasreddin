@@ -393,10 +393,10 @@ object AppStrings {
         AppLanguage.ENGLISH -> "-50% PRO • Ad-Free Forever"
     }
 
-    fun paywallBenefit1(lang: AppLanguage): String = when (lang) {
-        AppLanguage.RUSSIAN -> "Все 25+ историй (минимум 4 страницы в каждой)"
-        AppLanguage.SPANISH -> "Las 25+ historias (mínimo 4 páginas cada una)"
-        AppLanguage.ENGLISH -> "All 25+ stories (4+ fullscreen pages each)"
+    fun paywallBenefit1(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Все $totalCount+ историй (минимум 4 страницы в каждой)"
+        AppLanguage.SPANISH -> "Las $totalCount+ historias (mínimo 4 páginas cada una)"
+        AppLanguage.ENGLISH -> "All $totalCount+ stories (4+ fullscreen pages each)"
     }
 
     fun paywallBenefit2(lang: AppLanguage): String = when (lang) {
@@ -423,10 +423,10 @@ object AppStrings {
         AppLanguage.ENGLISH -> "Go PRO Ad-Free — $4.99"
     }
 
-    fun buySeriesButtonText(lang: AppLanguage): String = when (lang) {
-        AppLanguage.RUSSIAN -> "Открыть серию 11–25 без рекламы — $0.99"
-        AppLanguage.SPANISH -> "Abrir serie 11–25 sin anuncios — $0.99"
-        AppLanguage.ENGLISH -> "Unlock Series 11–25 Ad-Free — $0.99"
+    fun buySeriesButtonText(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Открыть серию 11–$totalCount без рекламы — $0.99"
+        AppLanguage.SPANISH -> "Abrir serie 11–$totalCount sin anuncios — $0.99"
+        AppLanguage.ENGLISH -> "Unlock Series 11–$totalCount Ad-Free — $0.99"
     }
 
     fun watchAdButtonText(lang: AppLanguage, nextStart: Int, nextEnd: Int): String = when (lang) {
@@ -447,10 +447,10 @@ object AppStrings {
         AppLanguage.ENGLISH -> "👑 PRO unlocked! All stories available ad-free."
     }
 
-    fun seriesPurchaseSuccessMessage(lang: AppLanguage): String = when (lang) {
-        AppLanguage.RUSSIAN -> "✨ Серия 11–25 разблокирована без рекламы!"
-        AppLanguage.SPANISH -> "✨ ¡Serie 11–25 desbloqueada sin anuncios!"
-        AppLanguage.ENGLISH -> "✨ Series 11–25 unlocked ad-free!"
+    fun seriesPurchaseSuccessMessage(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+        AppLanguage.RUSSIAN -> "✨ Серия 11–$totalCount разблокирована без рекламы!"
+        AppLanguage.SPANISH -> "✨ ¡Serie 11–$totalCount desbloqueada sin anuncios!"
+        AppLanguage.ENGLISH -> "✨ Series 11–$totalCount unlocked ad-free!"
     }
 
     fun adBatchUnlockedMessage(lang: AppLanguage, maxUnlocked: Int): String = when (lang) {

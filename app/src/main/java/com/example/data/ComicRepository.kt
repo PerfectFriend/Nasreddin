@@ -26,7 +26,8 @@ import java.util.Locale
  * 2. Every built-in story strictly provides at least 4 readable pages:
  *    - Story #1 uses 4 full-page illustrations.
  *    - Stories #2..#10 split each localized 2x2 comic sheet into 4 cropped single-panel pages.
- *    - Stories #11..#25 expand to 4 pages each until dedicated episode artwork is bundled/fetched.
+ *    - Stories #11..#50 (and beyond) share 3 theme-matched text-free universal 2x2 templates
+ *      paired with localized dynamic [com.example.model.SpeechBubble] overlays.
  */
 class ComicRepository(private val context: Context) {
 
@@ -101,8 +102,9 @@ class ComicRepository(private val context: Context) {
         return true
     }
 
-    fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int = 25): Int {
-        val nextMax = (_adUnlockedMaxStory.value + batchSize).coerceAtMost(maxStory)
+    fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int? = null): Int {
+        val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 50)
+        val nextMax = (_adUnlockedMaxStory.value + batchSize).coerceAtMost(catalogMax)
         _adUnlockedMaxStory.value = nextMax
         prefs.edit().putInt(KEY_AD_UNLOCKED_MAX_STORY, nextMax).apply()
         return nextMax
@@ -147,7 +149,7 @@ class ComicRepository(private val context: Context) {
         // Add featured story first
         list.add(featuredStory)
 
-        // Add stories 2 through 25
+        // Add stories 2 through catalog end (50 built-in stories in v1.1)
         for (story in storiesFromVault.drop(1)) {
             list.add(story)
         }
@@ -186,7 +188,9 @@ class ComicRepository(private val context: Context) {
                     AppLanguage.ENGLISH -> obj.optString("moral_en")
                 }
 
+                val themeTag = obj.optString("theme", "")
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
+                val universalTemplateDrawable = resolveUniversalTemplateDrawable(themeTag, seq)
 
                 val pages = if (episodeDrawable != null) {
                     val quadrantCrops = listOf(
@@ -209,8 +213,8 @@ class ComicRepository(private val context: Context) {
                         )
                     }
                 } else {
-                    // Universal v1.1 template architecture: one text-free 2x2 sheet serves all languages,
-                    // while StoryBubbleComposer overlays localized dialogue/narration balloons dynamically.
+                    // Universal v1.1 template architecture: 3 text-free 2x2 sheets (bazaar, teahouse, night)
+                    // serve all languages while StoryBubbleComposer renders localized dialogue balloons dynamically.
                     val universalQuadrantCrops = listOf(
                         PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f),
                         PanelCrop(left = 0.510f, top = 0.018f, right = 0.980f, bottom = 0.490f),
@@ -228,7 +232,7 @@ class ComicRepository(private val context: Context) {
                         ComicPage(
                             id = "${id}_p$step",
                             title = "$title • ${AppStrings.panelStepLabel(lang, step)}",
-                            drawableResId = R.drawable.img_universal_hodja_template,
+                            drawableResId = universalTemplateDrawable,
                             narrativeText = if (step == 4 && moral.isNotEmpty()) moral else text,
                             dialogueText = moral.takeIf { it.isNotEmpty() },
                             sequenceNumber = step,
@@ -253,7 +257,7 @@ class ComicRepository(private val context: Context) {
                         title = "$seq. $title",
                         subtitle = subtitleText,
                         description = text,
-                        coverDrawableResId = episodeDrawable ?: R.drawable.img_universal_hodja_template,
+                        coverDrawableResId = episodeDrawable ?: universalTemplateDrawable,
                         pages = pages,
                         isBuiltIn = true,
                         language = lang,
@@ -267,6 +271,23 @@ class ComicRepository(private val context: Context) {
             Log.e(TAG, "Error loading stories from vault for language=$lang", e)
         }
         return result
+    }
+
+    /**
+     * Selects the universal 2x2 text-free sheet matching a story's setting ("bazaar", "teahouse",
+     * or "night") and cycles evenly when no explicit theme tag is provided in JSON.
+     */
+    internal fun resolveUniversalTemplateDrawable(theme: String?, sequence: Int): Int {
+        return when (theme?.trim()?.lowercase()) {
+            "teahouse" -> R.drawable.img_universal_hodja_teahouse
+            "night" -> R.drawable.img_universal_hodja_night
+            "bazaar" -> R.drawable.img_universal_hodja_template
+            else -> when ((sequence - 1).mod(3)) {
+                0 -> R.drawable.img_universal_hodja_template
+                1 -> R.drawable.img_universal_hodja_teahouse
+                else -> R.drawable.img_universal_hodja_night
+            }
+        }
     }
 
     private fun getEpisodeDrawable(seq: Int, lang: AppLanguage): Int? {

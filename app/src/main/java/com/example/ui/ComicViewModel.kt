@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
  * Hybrid access truth table for any [ComicBook]:
  * - `comic.isFree == true` (Stories 1..10) -> always unlocked & ad-free.
  * - `isPremiumUnlocked == true` (PRO $4.99) -> all stories unlocked & zero ads.
- * - `seriesUnlocked == true` ($0.99 pack) -> current series (11..25) unlocked & ad-free.
+ * - `seriesUnlocked == true` ($0.99 pack) -> built-in series (11..50) unlocked & ad-free.
  * - `comic.storyNumber <= adUnlockedMaxStory` -> unlocked free via Rewarded Ad (periodic sponsor breaks apply).
  */
 data class UiState(
@@ -159,13 +159,14 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
         repository.unlockSeriesPack()
         val lang = _uiState.value.currentLanguage
         val pending = _uiState.value.pendingLockedComic
+        val builtInCount = _uiState.value.comics.count { it.isBuiltIn }.coerceAtLeast(50)
         _uiState.update {
             it.copy(
                 isPaywallOpen = false,
                 isAdSlotOpen = false,
                 seriesUnlocked = true,
                 pendingLockedComic = null,
-                snackbarMessage = AppStrings.seriesPurchaseSuccessMessage(lang)
+                snackbarMessage = AppStrings.seriesPurchaseSuccessMessage(lang, builtInCount)
             )
         }
         if (pending != null) {

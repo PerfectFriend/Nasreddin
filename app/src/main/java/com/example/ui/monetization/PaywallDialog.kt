@@ -221,7 +221,7 @@ fun PaywallDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    BenefitRow(AppStrings.paywallBenefit1(currentLanguage))
+                    BenefitRow(AppStrings.paywallBenefit1(currentLanguage, totalStoriesCount))
                     BenefitRow(AppStrings.paywallBenefit2(currentLanguage))
                     BenefitRow(AppStrings.paywallBenefit3(currentLanguage))
                     BenefitRow(AppStrings.paywallBenefit4(currentLanguage))
@@ -270,7 +270,7 @@ fun PaywallDialog(
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = AppStrings.buySeriesButtonText(currentLanguage),
+                            text = AppStrings.buySeriesButtonText(currentLanguage, totalStoriesCount),
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center
