@@ -8,6 +8,8 @@ import android.os.Build
 import android.util.Log
 import android.util.LruCache
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -115,46 +117,80 @@ internal object ComicPanelCropCache {
 
 /**
  * Unified comic artwork renderer used by the fullscreen reader, thumbnail filmstrip, and sequence sheet.
- * Automatically renders cropped single-panel regions when [ComicPage.panelCrop] is provided.
+ * Automatically renders cropped single-panel regions when [ComicPage.panelCrop] is provided, and
+ * optionally overlays localized dynamic [SpeechBubble] balloons when [showBubbles] is enabled.
  */
 @Composable
 fun ComicPageArtwork(
     page: ComicPage,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Fit
+    contentScale: ContentScale = ContentScale.Fit,
+    showBubbles: Boolean = false
 ) {
     val resId = page.drawableResId
     val crop = page.panelCrop
 
-    if (resId != null && crop != null) {
-        val context = LocalContext.current
-        val croppedBitmap = remember(resId, crop) {
-            ComicPanelCropCache.getOrDecodePanel(context.resources, resId, crop)
-        }
-        if (croppedBitmap != null) {
+    Box(modifier = modifier) {
+        var resolvedAspectRatio = 0.75f
+
+        if (resId != null && crop != null) {
+            val context = LocalContext.current
+            val croppedBitmap = remember(resId, crop) {
+                ComicPanelCropCache.getOrDecodePanel(context.resources, resId, crop)
+            }
+            if (croppedBitmap != null) {
+                resolvedAspectRatio = if (croppedBitmap.height > 0) {
+                    croppedBitmap.width.toFloat() / croppedBitmap.height.toFloat()
+                } else {
+                    0.75f
+                }
+                Image(
+                    bitmap = croppedBitmap,
+                    contentDescription = page.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = contentScale
+                )
+            } else {
+                val painter = painterResource(id = resId)
+                val intrinsic = painter.intrinsicSize
+                if (intrinsic.width > 0f && intrinsic.height > 0f) {
+                    resolvedAspectRatio = intrinsic.width / intrinsic.height
+                }
+                Image(
+                    painter = painter,
+                    contentDescription = page.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = contentScale
+                )
+            }
+        } else if (resId != null) {
+            val painter = painterResource(id = resId)
+            val intrinsic = painter.intrinsicSize
+            if (intrinsic.width > 0f && intrinsic.height > 0f) {
+                resolvedAspectRatio = intrinsic.width / intrinsic.height
+            }
             Image(
-                bitmap = croppedBitmap,
+                painter = painter,
                 contentDescription = page.title,
-                modifier = modifier,
+                modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale
             )
-            return
+        } else if (page.uriString != null) {
+            AsyncImage(
+                model = page.uriString,
+                contentDescription = page.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale
+            )
         }
-    }
 
-    if (resId != null) {
-        Image(
-            painter = painterResource(id = resId),
-            contentDescription = page.title,
-            modifier = modifier,
-            contentScale = contentScale
-        )
-    } else if (page.uriString != null) {
-        AsyncImage(
-            model = page.uriString,
-            contentDescription = page.title,
-            modifier = modifier,
-            contentScale = contentScale
-        )
+        if (showBubbles && page.bubbles.isNotEmpty()) {
+            ComicBubbleOverlay(
+                bubbles = page.bubbles,
+                imageAspectRatio = resolvedAspectRatio,
+                isCropScale = contentScale == ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }

@@ -26,6 +26,7 @@ import com.example.model.ComicPage
 fun ZoomableComicImage(
     page: ComicPage,
     modifier: Modifier = Modifier,
+    showBubbles: Boolean = true,
     onTap: () -> Unit
 ) {
     // Keyed by page.id so switching pages or stories always starts at unzoomed 1f scale
@@ -94,7 +95,8 @@ fun ZoomableComicImage(
         ComicPageArtwork(
             page = page,
             modifier = graphicsModifier,
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            showBubbles = showBubbles
         )
     }
 }

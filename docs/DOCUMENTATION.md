@@ -55,6 +55,7 @@ app/src/main/java/com/example/
 │   ├── reader/
 │   │   ├── ComicReaderScreen.kt        # Dual-mode reader, direct story switcher, overlays, BackHandler
 │   │   ├── ComicPageArtwork.kt         # BitmapRegionDecoder panel cropper & bounded LruCache(32)
+│   │   ├── ComicBubbleOverlay.kt       # Dynamic localized speech/narration balloons fitted to artwork rect
 │   │   ├── ZoomableComicImage.kt       # Page-keyed pinch-to-zoom, double-tap & pan gestures
 │   │   ├── ThumbnailFilmstripDrawer.kt # Auto-synced bottom thumbnail strip
 │   │   └── ComicLoreSheet.kt           # ModalBottomSheet for narrative, dialogue & wisdom card
@@ -63,6 +64,7 @@ app/src/main/java/com/example/
 │   └── theme/                          # Material 3 high-contrast Midnight Gold & Cyan palette
 └── util/
     ├── AppStrings.kt                   # Centralized RU / ES / EN localization dictionary
+    ├── StoryBubbleComposer.kt          # Splits parables into 4 dynamic panel speech/narration beats
     ├── FolderImporter.kt               # SAF folder/multi-image importer with persistable URI access
     └── AlphanumericComparator.kt       # Overflow-safe natural numeric string comparator
 ```

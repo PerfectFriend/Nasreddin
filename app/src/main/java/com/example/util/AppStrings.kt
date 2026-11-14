@@ -566,4 +566,10 @@ object AppStrings {
         AppLanguage.SPANISH -> "Cómic eliminado"
         AppLanguage.ENGLISH -> "Comic deleted"
     }
+
+    fun speechBubblesTooltip(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Речевые облачка"
+        AppLanguage.SPANISH -> "Globos de texto"
+        AppLanguage.ENGLISH -> "Speech bubbles"
+    }
 }

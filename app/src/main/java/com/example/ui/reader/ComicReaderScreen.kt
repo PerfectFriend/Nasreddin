@@ -41,6 +41,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -119,9 +121,11 @@ fun ComicReaderScreen(
     readerBackground: ReaderBackground,
     controlsVisible: Boolean,
     isThumbnailDrawerOpen: Boolean,
+    showSpeechBubbles: Boolean,
     onPageChanged: (Int) -> Unit,
     onToggleControls: () -> Unit,
     onToggleThumbnails: (Boolean) -> Unit,
+    onToggleSpeechBubbles: () -> Unit,
     onOpenSequenceManager: () -> Unit,
     onOpenLore: () -> Unit,
     onChangeReadingMode: (ReadingMode) -> Unit,
@@ -229,6 +233,7 @@ fun ComicReaderScreen(
                         if (page != null) {
                             ZoomableComicImage(
                                 page = page,
+                                showBubbles = showSpeechBubbles,
                                 onTap = onToggleControls
                             )
                         }
@@ -249,6 +254,7 @@ fun ComicReaderScreen(
                             ) {
                                 ZoomableComicImage(
                                     page = page,
+                                    showBubbles = showSpeechBubbles,
                                     onTap = onToggleControls
                                 )
                             }
@@ -271,7 +277,10 @@ fun ComicReaderScreen(
                 totalPages = totalPages,
                 currentLanguage = currentLanguage,
                 readingMode = readingMode,
+                hasDynamicBubbles = comic.pages.any { it.bubbles.isNotEmpty() },
+                showSpeechBubbles = showSpeechBubbles,
                 onBack = onClose,
+                onToggleSpeechBubbles = onToggleSpeechBubbles,
                 onOpenLore = onOpenLore,
                 onOpenSequence = onOpenSequenceManager,
                 onToggleReadingMode = {
@@ -878,7 +887,10 @@ private fun ReaderTopBar(
     totalPages: Int,
     currentLanguage: AppLanguage,
     readingMode: ReadingMode,
+    hasDynamicBubbles: Boolean,
+    showSpeechBubbles: Boolean,
     onBack: () -> Unit,
+    onToggleSpeechBubbles: () -> Unit,
     onOpenLore: () -> Unit,
     onOpenSequence: () -> Unit,
     onToggleReadingMode: () -> Unit,
@@ -926,6 +938,20 @@ private fun ReaderTopBar(
                     color = CyberNeonCyan,
                     fontSize = 11.sp
                 )
+            }
+
+            // Dynamic Speech Bubble Toggle (shown when story uses universal dynamic bubble templates)
+            if (hasDynamicBubbles) {
+                IconButton(
+                    onClick = onToggleSpeechBubbles,
+                    modifier = Modifier.testTag("reader_bubbles_toggle")
+                ) {
+                    Icon(
+                        imageVector = if (showSpeechBubbles) Icons.Default.ChatBubble else Icons.Default.ChatBubbleOutline,
+                        contentDescription = AppStrings.speechBubblesTooltip(currentLanguage),
+                        tint = if (showSpeechBubbles) CyberNeonCyan else Color.White.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             // Lore / Sermon Text Button

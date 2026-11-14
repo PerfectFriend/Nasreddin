@@ -22,6 +22,45 @@ data class PanelCrop(
 )
 
 /**
+ * Visual style of a dynamically rendered comic speech or narration overlay.
+ */
+enum class BubbleStyle {
+    /** Classic cream comic balloon with dark ink outline and directional tail. */
+    SPEECH,
+    /** Gold-trimmed dark caption ribbon suited for scene setup and closing morals. */
+    NARRATION,
+    /** Soft cyan-tinted thought/whisper balloon. */
+    THOUGHT
+}
+
+/**
+ * Tail pointer direction anchored on a [SpeechBubble] balloon.
+ */
+enum class BubbleTailDirection {
+    NONE,
+    BOTTOM_LEFT,
+    BOTTOM_RIGHT,
+    TOP_LEFT,
+    TOP_RIGHT
+}
+
+/**
+ * Declarative speech/narration overlay anchored in normalized `[0f..1f]` coordinates
+ * relative to the fitted comic artwork bounds. Enables a single language-agnostic
+ * template artwork to serve unlimited languages by rendering localized text on top.
+ */
+data class SpeechBubble(
+    val id: String,
+    val text: String,
+    val centerX: Float,
+    val centerY: Float,
+    val widthFraction: Float = 0.80f,
+    val speaker: String? = null,
+    val style: BubbleStyle = BubbleStyle.SPEECH,
+    val tailDirection: BubbleTailDirection = BubbleTailDirection.BOTTOM_LEFT
+)
+
+/**
  * Represents a single readable page (or cropped single panel) within a [ComicBook].
  */
 data class ComicPage(
@@ -34,7 +73,8 @@ data class ComicPage(
     val artStyleNotes: String? = null,
     val sequenceNumber: Int = 0,
     val language: AppLanguage? = null,
-    val panelCrop: PanelCrop? = null
+    val panelCrop: PanelCrop? = null,
+    val bubbles: List<SpeechBubble> = emptyList()
 )
 
 /**

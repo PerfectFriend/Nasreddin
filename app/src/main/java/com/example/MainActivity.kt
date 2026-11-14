@@ -100,6 +100,7 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 readerBackground = uiState.readerBackground,
                 controlsVisible = uiState.isFullscreenControlsVisible,
                 isThumbnailDrawerOpen = uiState.isThumbnailDrawerOpen,
+                showSpeechBubbles = uiState.showSpeechBubbles,
                 onPageChanged = { newPage ->
                     viewModel.setCurrentPage(newPage)
                 },
@@ -108,6 +109,9 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 },
                 onToggleThumbnails = { open ->
                     viewModel.toggleThumbnailDrawer(open)
+                },
+                onToggleSpeechBubbles = {
+                    viewModel.toggleSpeechBubbles()
                 },
                 onOpenSequenceManager = {
                     viewModel.toggleSequenceSheet(true)

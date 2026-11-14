@@ -9,6 +9,7 @@ import com.example.model.ComicBook
 import com.example.model.ComicPage
 import com.example.model.PanelCrop
 import com.example.util.AppStrings
+import com.example.util.StoryBubbleComposer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -183,12 +184,6 @@ class ComicRepository(private val context: Context) {
 
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
 
-                val defaultCoverResId = when (lang) {
-                    AppLanguage.RUSSIAN -> R.drawable.img_comic_ru_cover
-                    AppLanguage.SPANISH -> R.drawable.img_comic_es_cover
-                    AppLanguage.ENGLISH -> R.drawable.img_comic_en_cover
-                }
-
                 val pages = if (episodeDrawable != null) {
                     val quadrantCrops = listOf(
                         PanelCrop(left = 0.015f, top = 0.082f, right = 0.496f, bottom = 0.532f),
@@ -210,52 +205,34 @@ class ComicRepository(private val context: Context) {
                         )
                     }
                 } else {
-                    listOf(
-                        ComicPage(
-                            id = "${id}_p1",
-                            title = "$title • 1/4",
-                            drawableResId = defaultCoverResId,
-                            narrativeText = text,
-                            sequenceNumber = 1,
-                            language = lang
-                        ),
-                        ComicPage(
-                            id = "${id}_p2",
-                            title = "$title • 2/4",
-                            drawableResId = when (lang) {
-                                AppLanguage.RUSSIAN -> R.drawable.img_comic_ru_p1_v2
-                                AppLanguage.SPANISH -> R.drawable.img_comic_es_p1_v2
-                                AppLanguage.ENGLISH -> R.drawable.img_comic_en_p1_v2
-                            },
-                            narrativeText = text,
-                            sequenceNumber = 2,
-                            language = lang
-                        ),
-                        ComicPage(
-                            id = "${id}_p3",
-                            title = "$title • 3/4",
-                            drawableResId = when (lang) {
-                                AppLanguage.RUSSIAN -> R.drawable.img_comic_ru_p2_v2
-                                AppLanguage.SPANISH -> R.drawable.img_comic_es_p2_v2
-                                AppLanguage.ENGLISH -> R.drawable.img_comic_en_p2_v2
-                            },
-                            narrativeText = text,
-                            sequenceNumber = 3,
-                            language = lang
-                        ),
-                        ComicPage(
-                            id = "${id}_p4",
-                            title = "$title • 4/4",
-                            drawableResId = when (lang) {
-                                AppLanguage.RUSSIAN -> R.drawable.img_comic_ru_p3_v2
-                                AppLanguage.SPANISH -> R.drawable.img_comic_es_p3_v2
-                                AppLanguage.ENGLISH -> R.drawable.img_comic_en_p3_v2
-                            },
-                            narrativeText = moral.takeIf { it.isNotEmpty() } ?: text,
-                            sequenceNumber = 4,
-                            language = lang
-                        )
+                    // Universal v1.1 template architecture: one text-free 2x2 sheet serves all languages,
+                    // while StoryBubbleComposer overlays localized dialogue/narration balloons dynamically.
+                    val universalQuadrantCrops = listOf(
+                        PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f),
+                        PanelCrop(left = 0.510f, top = 0.018f, right = 0.980f, bottom = 0.490f),
+                        PanelCrop(left = 0.020f, top = 0.510f, right = 0.490f, bottom = 0.982f),
+                        PanelCrop(left = 0.510f, top = 0.510f, right = 0.980f, bottom = 0.982f)
                     )
+                    val bubbleBeats = StoryBubbleComposer.composeFourPanelBubbles(
+                        storyId = id,
+                        storyText = text,
+                        moral = moral,
+                        language = lang
+                    )
+                    universalQuadrantCrops.mapIndexed { idx, crop ->
+                        val step = idx + 1
+                        ComicPage(
+                            id = "${id}_p$step",
+                            title = "$title • ${AppStrings.panelStepLabel(lang, step)}",
+                            drawableResId = R.drawable.img_universal_hodja_template,
+                            narrativeText = if (step == 4 && moral.isNotEmpty()) moral else text,
+                            dialogueText = moral.takeIf { it.isNotEmpty() },
+                            sequenceNumber = step,
+                            language = lang,
+                            panelCrop = crop,
+                            bubbles = bubbleBeats.getOrElse(idx) { emptyList() }
+                        )
+                    }
                 }
 
                 val subtitleText = when (lang) {
@@ -272,7 +249,7 @@ class ComicRepository(private val context: Context) {
                         title = "$seq. $title",
                         subtitle = subtitleText,
                         description = text,
-                        coverDrawableResId = episodeDrawable ?: defaultCoverResId,
+                        coverDrawableResId = episodeDrawable ?: R.drawable.img_universal_hodja_template,
                         pages = pages,
                         isBuiltIn = true,
                         language = lang,

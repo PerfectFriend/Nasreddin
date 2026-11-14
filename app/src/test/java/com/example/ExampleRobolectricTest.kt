@@ -8,8 +8,11 @@ import com.example.model.AppLanguage
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
 import com.example.ui.reader.ComicPanelCropCache
+import com.example.ui.reader.computeFittedArtworkRect
+import com.example.util.StoryBubbleComposer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -287,5 +290,100 @@ class ExampleRobolectricTest {
         val builtIn = repository.comics.value.filter { it.isBuiltIn }
         assertEquals(25, builtIn.size)
         assertEquals(0, repository.comics.value.count { !it.isBuiltIn })
+    }
+
+    @Test
+    fun `stories 11 to 25 share one universal text-free template across RU ES EN with localized speech bubbles`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+
+        val collectTitlesByStory = mutableMapOf<AppLanguage, List<String>>()
+
+        for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
+            repository.setLanguage(lang)
+            val premiumStories = repository.comics.value.filter { it.isBuiltIn && it.storyNumber >= 11 }
+            assertEquals(15, premiumStories.size)
+
+            val firstBubbleTexts = mutableListOf<String>()
+            for (story in premiumStories) {
+                assertEquals(R.drawable.img_universal_hodja_template, story.coverDrawableResId)
+                assertEquals(4, story.pages.size)
+                assertEquals(4, story.pages.mapNotNull { it.panelCrop }.toSet().size)
+
+                for (page in story.pages) {
+                    assertEquals(R.drawable.img_universal_hodja_template, page.drawableResId)
+                    assertTrue(
+                        "Story ${story.storyNumber} ($lang) page ${page.sequenceNumber} must have dynamic bubbles",
+                        page.bubbles.isNotEmpty()
+                    )
+                    for (bubble in page.bubbles) {
+                        assertTrue(bubble.text.isNotBlank())
+                        assertTrue(bubble.centerX in 0f..1f)
+                        assertTrue(bubble.centerY in 0f..1f)
+                    }
+                }
+                firstBubbleTexts.add(story.pages.first().bubbles.first().text)
+            }
+            collectTitlesByStory[lang] = firstBubbleTexts
+        }
+
+        // Same universal artwork, yet completely distinct localized bubble text per language
+        assertNotEquals(collectTitlesByStory[AppLanguage.RUSSIAN], collectTitlesByStory[AppLanguage.ENGLISH])
+        assertNotEquals(collectTitlesByStory[AppLanguage.SPANISH], collectTitlesByStory[AppLanguage.ENGLISH])
+    }
+
+    @Test
+    fun `computeFittedArtworkRect centers artwork accurately for ContentScale Fit and Crop`() {
+        // Vertical 1000x2000 container displaying a square 1:1 image -> letterboxed vertically at y=500..1500
+        val portraitFit = computeFittedArtworkRect(
+            containerWidthPx = 1000f,
+            containerHeightPx = 2000f,
+            imageAspectRatio = 1.0f,
+            isCropScale = false
+        )
+        assertEquals(0f, portraitFit.leftPx, 0.01f)
+        assertEquals(500f, portraitFit.topPx, 0.01f)
+        assertEquals(1000f, portraitFit.widthPx, 0.01f)
+        assertEquals(1000f, portraitFit.heightPx, 0.01f)
+
+        // Wide 2000x1000 container displaying a portrait 0.5f image -> pillarboxed horizontally at x=750..1250
+        val tabletFit = computeFittedArtworkRect(
+            containerWidthPx = 2000f,
+            containerHeightPx = 1000f,
+            imageAspectRatio = 0.5f,
+            isCropScale = false
+        )
+        assertEquals(750f, tabletFit.leftPx, 0.01f)
+        assertEquals(0f, tabletFit.topPx, 0.01f)
+        assertEquals(500f, tabletFit.widthPx, 0.01f)
+        assertEquals(1000f, tabletFit.heightPx, 0.01f)
+
+        // Crop fills full container bounds
+        val cropRect = computeFittedArtworkRect(
+            containerWidthPx = 1200f,
+            containerHeightPx = 800f,
+            imageAspectRatio = 0.75f,
+            isCropScale = true
+        )
+        assertEquals(0f, cropRect.leftPx, 0.01f)
+        assertEquals(0f, cropRect.topPx, 0.01f)
+        assertEquals(1200f, cropRect.widthPx, 0.01f)
+        assertEquals(800f, cropRect.heightPx, 0.01f)
+    }
+
+    @Test
+    fun `storyBubbleComposer splits English contractions cleanly and toggles visibility in ViewModel`() {
+        val sampleEn = "Hodja wasn't riding it. 'Thank Heaven!' he cheered. Everyone laughed loudly."
+        val sentences = StoryBubbleComposer.splitIntoSentences(sampleEn)
+        assertEquals(3, sentences.size)
+        assertEquals("Hodja wasn't riding it.", sentences[0])
+
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = ComicViewModel(app)
+        assertTrue(viewModel.uiState.value.showSpeechBubbles)
+        viewModel.toggleSpeechBubbles()
+        assertFalse(viewModel.uiState.value.showSpeechBubbles)
+        viewModel.toggleSpeechBubbles()
+        assertTrue(viewModel.uiState.value.showSpeechBubbles)
     }
 }

@@ -50,6 +50,7 @@ data class UiState(
     val pendingLockedComic: ComicBook? = null,
     val adSupportedReadsSinceBreak: Int = 0,
     val currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    val showSpeechBubbles: Boolean = true,
     val isLoading: Boolean = false,
     val snackbarMessage: String? = null
 ) {
@@ -328,6 +329,10 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleThumbnailDrawer(open: Boolean) {
         _uiState.update { it.copy(isThumbnailDrawerOpen = open) }
+    }
+
+    fun toggleSpeechBubbles() {
+        _uiState.update { it.copy(showSpeechBubbles = !it.showSpeechBubbles) }
     }
 
     fun clearSnackbar() {
