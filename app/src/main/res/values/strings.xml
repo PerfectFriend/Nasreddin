@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Ходжа</string>
+    <string name="title_library">Моя библиотека</string>
+    <string name="title_sermon_in_mosque">Проповедь в мечети</string>
+    <string name="subtitle_sermon_in_mosque">Ходжа Насреддин</string>
+    <string name="btn_read">Читать</string>
+    <string name="btn_import_folder">Выбрать папку с картинками</string>
+    <string name="btn_import_files">Выбрать изображения</string>
+    <string name="btn_fullscreen">Полноэкранный режим</string>
+    <string name="page_counter">Стр. %1$d из %2$d</string>
+    <string name="reading_mode_horizontal">Постранично (горизонтально)</string>
+    <string name="reading_mode_vertical">Свиток (вебтун)</string>
+    <string name="sort_alphabetical">По имени файла (А-Я)</string>
+    <string name="sort_reverse">Обратный порядок</string>
+    <string name="empty_folder_notice">Папка пуста или не содержит поддерживаемых изображений (JPG, PNG, WEBP)</string>
+</resources>
