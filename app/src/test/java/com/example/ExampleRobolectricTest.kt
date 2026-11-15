@@ -8,6 +8,8 @@ import com.example.model.AppLanguage
 import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
+import com.example.ui.library.LibraryFilter
+import com.example.ui.library.filterLibraryComics
 import com.example.ui.reader.ComicPanelCropCache
 import com.example.ui.reader.computeAdaptiveBubbleTypography
 import com.example.ui.reader.computeFittedArtworkRect
@@ -37,20 +39,20 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `vault loads 50 anecdotes with 10 free and 40 premium`() {
+    fun `vault loads 100 anecdotes with 10 free and 90 premium`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         val comics = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(50, comics.size)
+        assertEquals(100, comics.size)
 
         // Verify first 10 are free
         val freeStories = comics.filter { it.isFree }
         assertEquals(10, freeStories.size)
 
-        // Verify remaining 40 are premium
+        // Verify remaining 90 are premium
         val premiumStories = comics.filter { !it.isFree }
-        assertEquals(40, premiumStories.size)
+        assertEquals(90, premiumStories.size)
     }
 
     @Test
@@ -65,26 +67,26 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `strict language filtering applies across all 50 stories`() {
+    fun `strict language filtering applies across all 100 stories`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         // Russian selection
         repository.setLanguage(AppLanguage.RUSSIAN)
         val ruStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(50, ruStories.size)
+        assertEquals(100, ruStories.size)
         assertTrue(ruStories.all { it.language == AppLanguage.RUSSIAN })
 
         // Spanish selection
         repository.setLanguage(AppLanguage.SPANISH)
         val esStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(50, esStories.size)
+        assertEquals(100, esStories.size)
         assertTrue(esStories.all { it.language == AppLanguage.SPANISH })
 
         // English selection
         repository.setLanguage(AppLanguage.ENGLISH)
         val enStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(50, enStories.size)
+        assertEquals(100, enStories.size)
         assertTrue(enStories.all { it.language == AppLanguage.ENGLISH })
     }
 
@@ -123,14 +125,14 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `all 50 stories have at least 4 pages and episodes 2 to 10 split into 4 panel crops across RU ES and EN`() {
+    fun `all 100 stories have at least 4 pages and episodes 2 to 10 split into 4 panel crops across RU ES and EN`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val allBuiltIn = repository.comics.value.filter { it.isBuiltIn }
-            assertEquals(50, allBuiltIn.size)
+            assertEquals(100, allBuiltIn.size)
 
             // Every story must strictly have >= 4 pages
             for (story in allBuiltIn) {
@@ -289,15 +291,15 @@ class ExampleRobolectricTest {
 
         val repository = ComicRepository(context)
 
-        // Must fall back to English default and still serve all 50 built-in stories safely
+        // Must fall back to English default and still serve all 100 built-in stories safely
         assertEquals(AppLanguage.ENGLISH, repository.currentLanguage.value)
         val builtIn = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(50, builtIn.size)
+        assertEquals(100, builtIn.size)
         assertEquals(0, repository.comics.value.count { !it.isBuiltIn })
     }
 
     @Test
-    fun `stories 11 to 50 share 3 thematic text-free templates across RU ES EN with localized speech bubbles`() {
+    fun `stories 11 to 100 share 3 thematic text-free templates across RU ES EN with localized speech bubbles`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
@@ -311,11 +313,11 @@ class ExampleRobolectricTest {
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val premiumStories = repository.comics.value.filter { it.isBuiltIn && it.storyNumber >= 11 }
-            assertEquals(40, premiumStories.size)
+            assertEquals(90, premiumStories.size)
 
             val usedDrawables = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
             assertEquals(
-                "Stories 11..50 ($lang) should utilize all 3 thematic universal templates",
+                "Stories 11..100 ($lang) should utilize all 3 thematic universal templates",
                 expectedUniversalDrawables,
                 usedDrawables
             )
@@ -472,7 +474,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `new teahouse and night templates decode panels cleanly and ad batches unlock up to story 50`() {
+    fun `new teahouse and night templates decode panels cleanly and ad batches unlock up to story 100`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
         val crop = PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f)
@@ -498,14 +500,88 @@ class ExampleRobolectricTest {
         assertEquals(R.drawable.img_universal_hodja_template, repository.resolveUniversalTemplateDrawable("bazaar", 99))
         assertEquals(R.drawable.img_universal_hodja_teahouse, repository.resolveUniversalTemplateDrawable(null, 2))
 
-        // Ad batches advance sequentially past 25 all the way to 50
+        // Ad batches advance sequentially past 50 all the way to 100
         var unlockedMax = repository.adUnlockedMaxStory.value
         assertEquals(10, unlockedMax)
-        repeat(8) {
+        repeat(18) {
             unlockedMax = repository.unlockNextAdBatch()
         }
-        assertEquals(50, unlockedMax)
-        // Must cap cleanly at catalog max 50
-        assertEquals(50, repository.unlockNextAdBatch())
+        assertEquals(100, unlockedMax)
+        // Must cap cleanly at catalog max 100
+        assertEquals(100, repository.unlockNextAdBatch())
+    }
+
+    @Test
+    fun `library search and tier atmosphere filters locate stories accurately across 100 parables`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+        repository.setLanguage(AppLanguage.RUSSIAN)
+        val allComics = repository.comics.value
+
+        // Filter: FREE returns only stories 1..10
+        val freeOnly = filterLibraryComics(
+            comics = allComics,
+            query = "",
+            selectedFilter = LibraryFilter.FREE,
+            isPremiumUnlocked = false,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 10
+        )
+        assertEquals(10, freeOnly.size)
+
+        // Filter: UNLOCKED expands cleanly when adUnlockedMaxStory = 15
+        val unlocked15 = filterLibraryComics(
+            comics = allComics,
+            query = "",
+            selectedFilter = LibraryFilter.UNLOCKED,
+            isPremiumUnlocked = false,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 15
+        )
+        assertEquals(15, unlocked15.size)
+
+        // Filter: NIGHT matches night-themed episodes including #100
+        val nightStories = filterLibraryComics(
+            comics = allComics,
+            query = "",
+            selectedFilter = LibraryFilter.NIGHT,
+            isPremiumUnlocked = true,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 10
+        )
+        assertTrue(nightStories.any { it.storyNumber == 100 })
+        assertTrue(nightStories.all { it.themeTag == "night" })
+
+        // Numeric query with '#' prefix resolves exact episode #98
+        val byNumber = filterLibraryComics(
+            comics = allComics,
+            query = "#98",
+            selectedFilter = LibraryFilter.ALL,
+            isPremiumUnlocked = true,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 10
+        )
+        assertEquals(listOf(98), byNumber.map { it.storyNumber })
+
+        // Keyword query matches localized RU content cleanly and unknown words return empty
+        val byKeyword = filterLibraryComics(
+            comics = allComics,
+            query = "финиковой",
+            selectedFilter = LibraryFilter.BAZAAR,
+            isPremiumUnlocked = false,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 10
+        )
+        assertEquals(listOf(51), byKeyword.map { it.storyNumber })
+
+        val noMatch = filterLibraryComics(
+            comics = allComics,
+            query = "несбыточный_запрос_xyz",
+            selectedFilter = LibraryFilter.TEAHOUSE,
+            isPremiumUnlocked = false,
+            seriesUnlocked = false,
+            adUnlockedMaxStory = 10
+        )
+        assertTrue(noMatch.isEmpty())
     }
 }

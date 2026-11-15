@@ -19,13 +19,13 @@
 1. **Minimum 4 Pages per Story (`pages.size >= 4`):**
    - **Episode #1:** 4 dedicated full-page illustrations per language.
    - **Episodes #2–#10:** Localized 2×2 comic sheets dynamically cropped into **4 individual fullscreen panel pages** (`PanelCrop` fractional rects) using `BitmapRegionDecoder` + two-pass dimension decoding + thread-safe `LruCache(32)`.
-   - **Episodes #11–#50:** Powered by 3 theme-matched text-free universal templates (`img_universal_hodja_template` bazaar, `img_universal_hodja_teahouse` chaikhana/courtroom, `img_universal_hodja_night` desert/caravanserai) paired with dynamic localized `SpeechBubble` overlays (`StoryBubbleComposer` + `ComicBubbleOverlay` with adaptive typography) and localized `RU / ES / EN` morals stored in `nasreddin_anecdotes_vault.json`.
+   - **Episodes #11–#100:** Powered by 3 theme-matched text-free universal templates (`img_universal_hodja_template` bazaar, `img_universal_hodja_teahouse` chaikhana/courtroom, `img_universal_hodja_night` desert/caravanserai) paired with dynamic localized `SpeechBubble` overlays (`StoryBubbleComposer` + `ComicBubbleOverlay` with adaptive typography) and localized `RU / ES / EN` morals stored in `nasreddin_anecdotes_vault.json`.
 2. **Strict Single-Language Catalog Filtering:**
    - `ComicRepository.loadAllComics()` exposes only built-in stories matching the active `AppLanguage` (plus user-imported SAF folders whose labels also localize via `AppStrings`). Switching languages reloads localized titles, descriptions, drawables, bubbles, and reader strings immediately.
 3. **Hybrid Monetization Model:**
    - **Stories 1–10:** 100% Free, ad-free.
-   - **Stories 11–50:**
-     - **Rewarded Ad Path:** Unlocks episodes dynamically in batches of 5 (`11–15` through `46–50`) with a periodic non-rewarded sponsor break every `4` ad-supported story switches (`AD_BREAK_STORY_INTERVAL = 4`).
+   - **Stories 11–100:**
+     - **Rewarded Ad Path:** Unlocks episodes dynamically in batches of 5 (`11–15` through `96–100`) with a periodic non-rewarded sponsor break every `4` ad-supported story switches (`AD_BREAK_STORY_INTERVAL = 4`).
      - **Series Pack (`$0.99`):** Unlocks the full built-in series ad-free; hides redundant Series/Ad buttons in `PaywallDialog` once owned.
      - **Lifetime PRO (`$4.99`):** Full ad-free unlock across all volumes and customization tools.
 4. **Compose Stability & Window Safety:**
@@ -51,7 +51,9 @@ app/src/main/java/com/example/
 ├── ui/
 │   ├── ComicViewModel.kt               # UDF state holder (StateFlow<UiState>) & ad-frequency logic
 │   ├── splash/SplashScreen.kt          # Hero minaret launch screen & instant RU/ES/EN toggle
-│   ├── library/ComicLibraryScreen.kt   # Story catalog, SAF importers, hybrid status banner
+│   ├── library/
+│   │   ├── ComicLibraryScreen.kt   # 100-story catalog, inline search/filter chips, SAF importers
+│   │   └── LibraryFilter.kt        # Tier/atmosphere filter model & pure search predicate
 │   ├── reader/
 │   │   ├── ComicReaderScreen.kt        # Dual-mode reader, direct story switcher, overlays, BackHandler
 │   │   ├── ComicPageArtwork.kt         # BitmapRegionDecoder panel cropper & bounded LruCache(32)
@@ -96,6 +98,6 @@ gradle :app:testDebugUnitTest
 | Milestone | Scope | Technical Approach |
 | :--- | :--- | :--- |
 | **v1.0 (Baseline)** | 25 anecdotes (`>= 4` pages each), `RU/ES/EN`, SAF importer, Hybrid Paywall UX | Bundled vault JSON + 2×2 panel region cropping + local state |
-| **v1.1 (In Progress — 50/100)** | 50→100 stories + 1h Eastern soundtrack (Suno Pro / ACE-Step) | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + on-canvas dynamic localized text overlay; next: lightweight `AudioFocus`-safe soundtrack module & second 50 parables |
+| **v1.1 (100 Stories Ready — Audio Next)** | 100 stories + Library Search/Filter + 1h Eastern soundtrack (Suno Pro / ACE-Step) | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + on-canvas dynamic text overlay + trimmed unused APK deps; next: lightweight `AudioFocus`-safe soundtrack module & RC1 audit |
 | **v1.2** | Top-10 global languages + Live Billing & Ads SDKs | Google Play Billing / RuStore BillingClient + AdMob / Yandex Mobile Ads wiring at `PaywallDialog` / `ComicViewModel` seams |
 | **v2.0** | 500–1,200+ episodes via seasonal episodic drops | Cloud CDN / Play Feature/Asset packs + automated 20s cliffhanger video teaser funnel |

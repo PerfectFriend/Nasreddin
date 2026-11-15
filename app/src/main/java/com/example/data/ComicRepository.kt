@@ -26,7 +26,7 @@ import java.util.Locale
  * 2. Every built-in story strictly provides at least 4 readable pages:
  *    - Story #1 uses 4 full-page illustrations.
  *    - Stories #2..#10 split each localized 2x2 comic sheet into 4 cropped single-panel pages.
- *    - Stories #11..#50 (and beyond) share 3 theme-matched text-free universal 2x2 templates
+ *    - Stories #11..#100 (and beyond) share 3 theme-matched text-free universal 2x2 templates
  *      paired with localized dynamic [com.example.model.SpeechBubble] overlays.
  */
 class ComicRepository(private val context: Context) {
@@ -103,7 +103,7 @@ class ComicRepository(private val context: Context) {
     }
 
     fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int? = null): Int {
-        val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 50)
+        val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 100)
         val nextMax = (_adUnlockedMaxStory.value + batchSize).coerceAtMost(catalogMax)
         _adUnlockedMaxStory.value = nextMax
         prefs.edit().putInt(KEY_AD_UNLOCKED_MAX_STORY, nextMax).apply()
@@ -149,7 +149,7 @@ class ComicRepository(private val context: Context) {
         // Add featured story first
         list.add(featuredStory)
 
-        // Add stories 2 through catalog end (50 built-in stories in v1.1)
+        // Add stories 2 through catalog end (100 built-in stories in v1.1)
         for (story in storiesFromVault.drop(1)) {
             list.add(story)
         }
@@ -188,9 +188,10 @@ class ComicRepository(private val context: Context) {
                     AppLanguage.ENGLISH -> obj.optString("moral_en")
                 }
 
-                val themeTag = obj.optString("theme", "")
+                val rawTheme = obj.optString("theme", "")
+                val normalizedTheme = resolveNormalizedTheme(rawTheme, seq)
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
-                val universalTemplateDrawable = resolveUniversalTemplateDrawable(themeTag, seq)
+                val universalTemplateDrawable = resolveUniversalTemplateDrawable(normalizedTheme, seq)
 
                 val pages = if (episodeDrawable != null) {
                     val quadrantCrops = listOf(
@@ -263,6 +264,7 @@ class ComicRepository(private val context: Context) {
                         language = lang,
                         isFree = isFree,
                         storyNumber = seq,
+                        themeTag = normalizedTheme,
                         lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
                     )
                 )
@@ -273,20 +275,28 @@ class ComicRepository(private val context: Context) {
         return result
     }
 
+    private fun resolveNormalizedTheme(theme: String?, sequence: Int): String {
+        return when (theme?.trim()?.lowercase()) {
+            "teahouse" -> "teahouse"
+            "night" -> "night"
+            "bazaar" -> "bazaar"
+            else -> when ((sequence - 1).mod(3)) {
+                0 -> "bazaar"
+                1 -> "teahouse"
+                else -> "night"
+            }
+        }
+    }
+
     /**
      * Selects the universal 2x2 text-free sheet matching a story's setting ("bazaar", "teahouse",
      * or "night") and cycles evenly when no explicit theme tag is provided in JSON.
      */
     internal fun resolveUniversalTemplateDrawable(theme: String?, sequence: Int): Int {
-        return when (theme?.trim()?.lowercase()) {
+        return when (resolveNormalizedTheme(theme, sequence)) {
             "teahouse" -> R.drawable.img_universal_hodja_teahouse
             "night" -> R.drawable.img_universal_hodja_night
-            "bazaar" -> R.drawable.img_universal_hodja_template
-            else -> when ((sequence - 1).mod(3)) {
-                0 -> R.drawable.img_universal_hodja_template
-                1 -> R.drawable.img_universal_hodja_teahouse
-                else -> R.drawable.img_universal_hodja_night
-            }
+            else -> R.drawable.img_universal_hodja_template
         }
     }
 

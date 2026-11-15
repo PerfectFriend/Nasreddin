@@ -95,7 +95,8 @@ data class ComicBook(
     val dateAdded: Long = System.currentTimeMillis(),
     val language: AppLanguage = AppLanguage.RUSSIAN,
     val isFree: Boolean = true,
-    val storyNumber: Int = 1
+    val storyNumber: Int = 1,
+    val themeTag: String = "bazaar"
 )
 
 enum class ReadingMode {

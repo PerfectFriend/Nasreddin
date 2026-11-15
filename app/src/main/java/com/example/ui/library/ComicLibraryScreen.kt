@@ -27,21 +27,24 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
@@ -51,9 +54,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -64,6 +71,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,8 +98,9 @@ import com.example.ui.theme.VanGoghStarGold
 import com.example.util.AppStrings
 
 /**
- * Primary catalog home screen displaying the 50 localized Hodja Nasreddin episodes,
- * Hybrid Monetization status banner, SAF folder/image importers, and user-added folders.
+ * Primary catalog home screen displaying the 100 localized Hodja Nasreddin episodes,
+ * inline search & atmosphere/tier filters, Hybrid Monetization status banner,
+ * SAF folder/image importers, and user-added folders.
  *
  * Reviewer notes:
  * - Language switcher uses an in-window [AnimatedVisibility] scrim instead of `DropdownMenu`
@@ -120,6 +129,28 @@ fun ComicLibraryScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var langMenuExpanded by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedFilter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
+
+    val filteredComics = remember(
+        comics,
+        searchQuery,
+        selectedFilter,
+        isPremiumUnlocked,
+        seriesUnlocked,
+        adUnlockedMaxStory
+    ) {
+        filterLibraryComics(
+            comics = comics,
+            query = searchQuery,
+            selectedFilter = selectedFilter,
+            isPremiumUnlocked = isPremiumUnlocked,
+            seriesUnlocked = seriesUnlocked,
+            adUnlockedMaxStory = adUnlockedMaxStory
+        )
+    }
+
+    val isFilteringActive = searchQuery.isNotBlank() || selectedFilter != LibraryFilter.ALL
 
     BackHandler(enabled = langMenuExpanded) {
         langMenuExpanded = false
@@ -175,7 +206,7 @@ fun ComicLibraryScreen(
 
                 // Hybrid Premium / Ad-Supported Banner
                 item {
-                    val builtInCount = comics.count { it.isBuiltIn }.coerceAtLeast(50)
+                    val builtInCount = comics.count { it.isBuiltIn }.coerceAtLeast(100)
                     val unlockedCount = if (isPremiumUnlocked || seriesUnlocked) {
                         builtInCount
                     } else {
@@ -191,26 +222,39 @@ fun ComicLibraryScreen(
                     )
                 }
 
-                // Featured Comic Hero Banner (Story #1)
-                val featuredComic = comics.firstOrNull { it.isBuiltIn && it.storyNumber == 1 }
-                    ?: comics.firstOrNull { it.isBuiltIn }
-                if (featuredComic != null) {
+                // Featured Comic Hero Banner (Story #1 — hidden while filtering so results stay above the fold)
+                if (!isFilteringActive) {
+                    val featuredComic = comics.firstOrNull { it.isBuiltIn && it.storyNumber == 1 }
+                        ?: comics.firstOrNull { it.isBuiltIn }
+                    if (featuredComic != null) {
+                        item {
+                            FeaturedComicBanner(
+                                comic = featuredComic,
+                                currentLanguage = currentLanguage,
+                                onRead = { onOpenComic(featuredComic) },
+                                onManageSequence = { onManageSequence(featuredComic) }
+                            )
+                        }
+                    }
+
+                    // Quick Import Action Buttons
                     item {
-                        FeaturedComicBanner(
-                            comic = featuredComic,
+                        ImportActionsRow(
                             currentLanguage = currentLanguage,
-                            onRead = { onOpenComic(featuredComic) },
-                            onManageSequence = { onManageSequence(featuredComic) }
+                            onPickFolder = { folderPickerLauncher.launch(null) },
+                            onPickFiles = { filesPickerLauncher.launch("image/*") }
                         )
                     }
                 }
 
-                // Quick Import Action Buttons
+                // Search Bar & Atmosphere/Tier Filter Chips for 100-story catalog
                 item {
-                    ImportActionsRow(
+                    LibrarySearchAndFiltersSection(
                         currentLanguage = currentLanguage,
-                        onPickFolder = { folderPickerLauncher.launch(null) },
-                        onPickFiles = { filesPickerLauncher.launch("image/*") }
+                        searchQuery = searchQuery,
+                        selectedFilter = selectedFilter,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSelectFilter = { selectedFilter = it }
                     )
                 }
 
@@ -230,7 +274,7 @@ fun ComicLibraryScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = AppStrings.collectionHeader(currentLanguage, comics.size),
+                            text = AppStrings.collectionHeader(currentLanguage, filteredComics.size),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -238,18 +282,30 @@ fun ComicLibraryScreen(
                     }
                 }
 
-                // Comics List (Strictly matching the active language)
-                items(comics, key = { it.id }) { comic ->
-                    ComicListItemCard(
-                        comic = comic,
-                        currentLanguage = currentLanguage,
-                        isPremiumUnlocked = isPremiumUnlocked,
-                        seriesUnlocked = seriesUnlocked,
-                        adUnlockedMaxStory = adUnlockedMaxStory,
-                        onRead = { onOpenComic(comic) },
-                        onManageSequence = { onManageSequence(comic) },
-                        onDelete = { onDeleteComic(comic.id) }
-                    )
+                // Filtered Comics List (Strictly matching the active language)
+                if (filteredComics.isEmpty()) {
+                    item {
+                        EmptyFilterCard(
+                            currentLanguage = currentLanguage,
+                            onReset = {
+                                searchQuery = ""
+                                selectedFilter = LibraryFilter.ALL
+                            }
+                        )
+                    }
+                } else {
+                    items(filteredComics, key = { it.id }) { comic ->
+                        ComicListItemCard(
+                            comic = comic,
+                            currentLanguage = currentLanguage,
+                            isPremiumUnlocked = isPremiumUnlocked,
+                            seriesUnlocked = seriesUnlocked,
+                            adUnlockedMaxStory = adUnlockedMaxStory,
+                            onRead = { onOpenComic(comic) },
+                            onManageSequence = { onManageSequence(comic) },
+                            onDelete = { onDeleteComic(comic.id) }
+                        )
+                    }
                 }
 
                 // Eastern Wisdom Parable Info Card
@@ -1042,6 +1098,165 @@ private fun WisdomCard(currentLanguage: AppLanguage) {
                 fontSize = 12.sp,
                 lineHeight = 17.sp
             )
+        }
+    }
+}
+
+@Composable
+private fun LibrarySearchAndFiltersSection(
+    currentLanguage: AppLanguage,
+    searchQuery: String,
+    selectedFilter: LibraryFilter,
+    onSearchQueryChange: (String) -> Unit,
+    onSelectFilter: (LibraryFilter) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .testTag("library_search_input"),
+            singleLine = true,
+            placeholder = {
+                Text(
+                    text = AppStrings.searchStoriesPlaceholder(currentLanguage),
+                    color = Color.White.copy(alpha = 0.45f),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = CyberNeonCyan
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onSearchQueryChange("") },
+                        modifier = Modifier.testTag("library_search_clear")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = AppStrings.clearSearchTooltip(currentLanguage),
+                            tint = VanGoghStarGold
+                        )
+                    }
+                }
+            },
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = CyberSurfaceDark,
+                unfocusedContainerColor = CyberSurfaceDark,
+                focusedBorderColor = CyberNeonCyan,
+                unfocusedBorderColor = CyberSurfaceElevated,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = VanGoghStarGold
+            )
+        )
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(LibraryFilter.entries) { filter ->
+                val isSelected = selectedFilter == filter
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onSelectFilter(filter) },
+                    modifier = Modifier.testTag("library_filter_${filter.name.lowercase()}"),
+                    label = {
+                        Text(
+                            text = AppStrings.libraryFilterLabel(currentLanguage, filter),
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = CyberSurfaceDark,
+                        labelColor = Color.White.copy(alpha = 0.8f),
+                        selectedContainerColor = VanGoghStarGold,
+                        selectedLabelColor = Color(0xFF281500)
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = isSelected,
+                        borderColor = CyberSurfaceElevated,
+                        selectedBorderColor = VanGoghStarGold
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyFilterCard(
+    currentLanguage: AppLanguage,
+    onReset: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .testTag("library_empty_filter_card"),
+        colors = CardDefaults.cardColors(containerColor = CyberSurfaceDark),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CyberSurfaceElevated)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = VanGoghStarGold.copy(alpha = 0.7f),
+                modifier = Modifier.size(34.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = AppStrings.emptySearchTitle(currentLanguage),
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 15.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = AppStrings.emptySearchSub(currentLanguage),
+                color = Color.White.copy(alpha = 0.65f),
+                fontSize = 12.sp
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            FilledTonalButton(
+                onClick = onReset,
+                modifier = Modifier
+                    .height(48.dp)
+                    .testTag("library_reset_filters_btn"),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = CyberNeonCyan.copy(alpha = 0.16f),
+                    contentColor = CyberNeonCyan
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = AppStrings.resetFiltersAction(currentLanguage),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
         }
     }
 }

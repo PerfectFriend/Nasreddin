@@ -223,7 +223,7 @@ fun ComicAppContent(viewModel: ComicViewModel) {
 
     // Hybrid Paywall Modal Dialog
     if (uiState.isPaywallOpen) {
-        val totalBuiltIn = uiState.comics.count { it.isBuiltIn }.coerceAtLeast(50)
+        val totalBuiltIn = uiState.comics.count { it.isBuiltIn }.coerceAtLeast(100)
         PaywallDialog(
             currentLanguage = uiState.currentLanguage,
             seriesUnlocked = uiState.seriesUnlocked,

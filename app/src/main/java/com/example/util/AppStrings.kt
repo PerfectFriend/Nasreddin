@@ -1,6 +1,7 @@
 package com.example.util
 
 import com.example.model.AppLanguage
+import com.example.ui.library.LibraryFilter
 
 object AppStrings {
 
@@ -393,7 +394,7 @@ object AppStrings {
         AppLanguage.ENGLISH -> "-50% PRO • Ad-Free Forever"
     }
 
-    fun paywallBenefit1(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+    fun paywallBenefit1(lang: AppLanguage, totalCount: Int = 100): String = when (lang) {
         AppLanguage.RUSSIAN -> "Все $totalCount+ историй (минимум 4 страницы в каждой)"
         AppLanguage.SPANISH -> "Las $totalCount+ historias (mínimo 4 páginas cada una)"
         AppLanguage.ENGLISH -> "All $totalCount+ stories (4+ fullscreen pages each)"
@@ -423,7 +424,7 @@ object AppStrings {
         AppLanguage.ENGLISH -> "Go PRO Ad-Free — $4.99"
     }
 
-    fun buySeriesButtonText(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+    fun buySeriesButtonText(lang: AppLanguage, totalCount: Int = 100): String = when (lang) {
         AppLanguage.RUSSIAN -> "Открыть серию 11–$totalCount без рекламы — $0.99"
         AppLanguage.SPANISH -> "Abrir serie 11–$totalCount sin anuncios — $0.99"
         AppLanguage.ENGLISH -> "Unlock Series 11–$totalCount Ad-Free — $0.99"
@@ -447,7 +448,7 @@ object AppStrings {
         AppLanguage.ENGLISH -> "👑 PRO unlocked! All stories available ad-free."
     }
 
-    fun seriesPurchaseSuccessMessage(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
+    fun seriesPurchaseSuccessMessage(lang: AppLanguage, totalCount: Int = 100): String = when (lang) {
         AppLanguage.RUSSIAN -> "✨ Серия 11–$totalCount разблокирована без рекламы!"
         AppLanguage.SPANISH -> "✨ ¡Serie 11–$totalCount desbloqueada sin anuncios!"
         AppLanguage.ENGLISH -> "✨ Series 11–$totalCount unlocked ad-free!"
@@ -613,5 +614,68 @@ object AppStrings {
         AppLanguage.RUSSIAN -> "Комикс сформирован из $pageCount выбранных изображений"
         AppLanguage.SPANISH -> "Cómic creado con $pageCount imágenes seleccionadas"
         AppLanguage.ENGLISH -> "Comic created from $pageCount selected images"
+    }
+
+    fun searchStoriesPlaceholder(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Поиск притчи или номера (#42)..."
+        AppLanguage.SPANISH -> "Buscar historia o número (#42)..."
+        AppLanguage.ENGLISH -> "Search story or # (#42)..."
+    }
+
+    fun clearSearchTooltip(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Очистить поиск"
+        AppLanguage.SPANISH -> "Limpiar búsqueda"
+        AppLanguage.ENGLISH -> "Clear search"
+    }
+
+    fun libraryFilterLabel(lang: AppLanguage, filter: LibraryFilter): String = when (filter) {
+        LibraryFilter.ALL -> when (lang) {
+            AppLanguage.RUSSIAN -> "Все"
+            AppLanguage.SPANISH -> "Todas"
+            AppLanguage.ENGLISH -> "All"
+        }
+        LibraryFilter.FREE -> when (lang) {
+            AppLanguage.RUSSIAN -> "Бесплатные"
+            AppLanguage.SPANISH -> "Gratis"
+            AppLanguage.ENGLISH -> "Free"
+        }
+        LibraryFilter.UNLOCKED -> when (lang) {
+            AppLanguage.RUSSIAN -> "Доступные"
+            AppLanguage.SPANISH -> "Disponibles"
+            AppLanguage.ENGLISH -> "Unlocked"
+        }
+        LibraryFilter.BAZAAR -> when (lang) {
+            AppLanguage.RUSSIAN -> "Базар"
+            AppLanguage.SPANISH -> "Bazar"
+            AppLanguage.ENGLISH -> "Bazaar"
+        }
+        LibraryFilter.TEAHOUSE -> when (lang) {
+            AppLanguage.RUSSIAN -> "Чайхана"
+            AppLanguage.SPANISH -> "Tetería"
+            AppLanguage.ENGLISH -> "Chaikhana"
+        }
+        LibraryFilter.NIGHT -> when (lang) {
+            AppLanguage.RUSSIAN -> "Ночь"
+            AppLanguage.SPANISH -> "Noche"
+            AppLanguage.ENGLISH -> "Night"
+        }
+    }
+
+    fun emptySearchTitle(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Истории не найдены"
+        AppLanguage.SPANISH -> "No se encontraron historias"
+        AppLanguage.ENGLISH -> "No matching stories"
+    }
+
+    fun emptySearchSub(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Попробуйте другое слово или сбросьте фильтр"
+        AppLanguage.SPANISH -> "Prueba otra palabra o restablece los filtros"
+        AppLanguage.ENGLISH -> "Try another keyword or reset active filters"
+    }
+
+    fun resetFiltersAction(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Сбросить фильтры"
+        AppLanguage.SPANISH -> "Restablecer filtros"
+        AppLanguage.ENGLISH -> "Reset filters"
     }
 }
