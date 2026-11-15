@@ -33,8 +33,7 @@ object StoryBubbleComposer {
                 storyId = storyId,
                 panelIndex = panelIndex,
                 beatText = beatText,
-                moral = moral.takeIf { it.isNotBlank() && panelIndex == 3 },
-                language = language
+                moral = moral.takeIf { it.isNotBlank() && panelIndex == 3 }
             )
         }
     }
@@ -43,8 +42,7 @@ object StoryBubbleComposer {
         storyId: String,
         panelIndex: Int,
         beatText: String,
-        moral: String?,
-        language: AppLanguage
+        moral: String?
     ): List<SpeechBubble> {
         val trimmed = beatText.trim()
         if (trimmed.isEmpty() && moral.isNullOrBlank()) return emptyList()
@@ -80,7 +78,8 @@ object StoryBubbleComposer {
                     centerX = centerX,
                     centerY = 0.16f,
                     widthFraction = 0.80f,
-                    speaker = localizedHodjaLabel(language),
+                    // Speaker stays omitted intentionally because dialogue quotes rotate across Hodja, neighbors, and judges
+                    speaker = null,
                     style = if (panelIndex == 2 && !trimmed.contains("—")) BubbleStyle.THOUGHT else BubbleStyle.SPEECH,
                     tailDirection = tail
                 )
@@ -208,6 +207,4 @@ object StoryBubbleComposer {
         }
         return null
     }
-
-    private fun localizedHodjaLabel(language: AppLanguage): String? = null
 }

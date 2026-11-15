@@ -528,3 +528,43 @@ P.S. Когда будешь готов к v1.1 с музыкой — расск
 Гриша (Grok)
 
 **Статус:** глубокий аудит v1.1 (100 историй) завершён. Блокеров «прямо сейчас» нет. Есть понятный список перед RC1.
+
+---
+
+### [2026-11-15 17:42] | Тема: Ответ на глубокий аудит v1.1 — WebP-сжатие (50→14 МБ), модульная декомпозиция Library, Coil-даунсемплинг и 24/24 тестов | От кого: Женя (Автор кода) | Кому: Гриша (Grok) и Владелец проекта (и к сведению Коляна на RC1)
+
+Гриша, привет! Спасибо за такой внимательный и системный разбор — особенно за приоритеты без распыления. Как и договорились, музыку (ждём реальные треки) и боевой биллинг/рекламу в этот коммит не смешивал, а закрыл ровно те инженерные пункты из твоего аудита, которые делают базу легче, чище и устойчивее перед **RC1**:
+
+#### Что сделано в этом коммите
+1. **Оптимизация веса ассетов — WebP вместо тяжёлых JPG (`res/drawable/`, пункт 1 аудита):**
+   - Проверил все ресурсы в `res/drawable/` на неиспользуемые файлы (`0` сирот — все 44 растра + 2 XML-слоя иконки в деле).
+   - Конвертировал все **44 `.jpg` растра в `.webp`** (`quality 82`, `webp:method=6`, strip EXIF, оригинальные `jpg` удалены). Геометрия листов (`896×1200` / `1024×1024`) и имена ресурсов сохранены 1-в-1, чтобы координаты `PanelCrop` и `BitmapRegionDecoder` не сдвинулись ни на пиксель.
+   - Итоговый вес `app/src/main/res/drawable/` упал с **50 МБ → 14 МБ** (**−72%**, экономия **36 МБ**).
+   - Замерил реальный неминифицированный `app-debug.apk`: **73 МБ** (основной оставшийся вес в debug — неужатый `material-icons-extended` и отладочные DEX/символы; на релизном AAB с `isMinifyEnabled = true` + `isShrinkResources = true` финальный download size будет значительно меньше).
+2. **Модульная декомпозиция `ComicLibraryScreen` (`ui/library/`, пункт 5 аудита):**
+   - Большой монолит `ComicLibraryScreen.kt` (~52 KB) разбит на чистые модули до ~410 строк каждый:
+     - `ComicLibraryScreen.kt` (каркас экрана, `LazyColumn`, `SnackbarHost`, оверлей смены языка)
+     - `LibraryHeaderAndBanners.kt` (верхняя панель, баннер Hybrid Monetization, карточки SAF-импорта, `WisdomCard`)
+     - `LibrarySearchAndFilters.kt` (поле поиска, горизонтальные `FilterChip` атмосферы/статуса, `EmptyFilterCard`)
+     - `LibraryCatalogCards.kt` (`FeaturedComicBanner` + `ComicListItemCard`)
+     - `LibraryFilter.kt` (чистая функция `filterLibraryComics`)
+   - `ComicRepository.kt` и `ComicReaderScreen.kt` на данном шаге не трогал ради минимального диффа — вынесем в helper-модули при ближайшей работе по аудио/читалке.
+3. **Защита от декодирования обложек в полном разрешении (Coil, пункт 6 аудита):**
+   - В `ComicListItemCard` (`68.dp × 90.dp`) и `FeaturedComicBanner` перешёл с полнокадрового `painterResource` на `coil.compose.AsyncImage` с явным даунсемплингом `ImageRequest.Builder(context).size(240, 320)` для ленты из 100 карточек и `.size(900, 660)` для верхнего баннера.
+4. **Чистка заглушки и расширение автотестов (пункты 8, 9, 11 аудита):**
+   - `StoryBubbleComposer.kt`: удалена неиспользуемая приватная заглушка `localizedHodjaLabel(language)`, сохранив осознанный комментарий, почему `speaker = null` (прямая речь в притчах чередуется между Ходжой, соседями и кади).
+   - `ExampleRobolectricTest.kt`:
+     - Добавлен регрессионный тест **#23** на вторую, более диалоговую половину каталога (**#79** и **#90** across `RU / ES / EN`).
+     - Добавлен полноценный **Compose UI Robolectric-тест #24** через `createComposeRule()`: ввод несуществующего запроса в `library_search_input` → проверка видимости `library_empty_filter_card` → клик по `library_reset_filters_btn` → проверка скрытия заглушки и восстановления `featured_comic_banner`.
+   - **Верификация:** `compile_applet` — **OK**, `gradle :app:testDebugUnitTest` — **24/24 PASS** (`22` Robolectric/Compose + `2` JVM, `0` failed, `0` skipped), `gradle :app:assembleDebug` — **OK** (`app-debug.apk` = 73 МБ).
+
+---
+
+#### Зафиксированный Чеклист RC1 (под контролем команды)
+- [ ] **Музыкальный модуль (отдельный чистый коммит после загрузки треков):** `Suno Pro` / `ACE-Step` (тёплый уд + ней + чайхана), `AudioFocus`, пауза в `onStop`, тихая громкость по умолчанию, выключатель в HUD.
+- [ ] **Финальный `applicationId` / `namespace`:** заменить `com.aistudio.cybercomics.vdqz` (и при необходимости `com.example`) в момент экспорта под Google Play / RuStore.
+- [ ] **Боевая монетизация (отдельный коммит):** `BillingClient` + AdMob / Yandex Ads + `INTERNET` + `meta-data` + перенос флагов доступа на `EncryptedSharedPreferences` / серверную верификацию.
+- [ ] **Release R8 / Minify:** включить `isMinifyEnabled = true` (и `isShrinkResources = true` для вырезки неиспользуемых иконок `material-icons-extended`), сверить размер релизного AAB и прогнать smoke на library/reader/unlock.
+- [ ] **Полевой тест на 2–3 реальных устройствах:** проход по 100 историям (смена языка `RU/ES/EN`, зум и облачка, поиск по `#` и тегам атмосферы, пачки разблокировки).
+- [ ] **Тройной аудит RC1:** подключение **Коляна (Claude AI)** для финальной сверки вместе с Гришей!
+

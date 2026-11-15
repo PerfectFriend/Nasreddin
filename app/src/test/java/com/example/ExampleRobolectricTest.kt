@@ -2,17 +2,26 @@ package com.example
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
 import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
+import com.example.ui.library.ComicLibraryScreen
 import com.example.ui.library.LibraryFilter
 import com.example.ui.library.filterLibraryComics
 import com.example.ui.reader.ComicPanelCropCache
 import com.example.ui.reader.computeAdaptiveBubbleTypography
 import com.example.ui.reader.computeFittedArtworkRect
+import com.example.ui.theme.CyberComicsTheme
 import com.example.util.AppStrings
 import com.example.util.FolderImporter
 import com.example.util.StoryBubbleComposer
@@ -22,6 +31,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -30,6 +40,9 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ExampleRobolectricTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
 
     @Test
     fun `read string from context`() {
@@ -583,5 +596,83 @@ class ExampleRobolectricTest {
             adUnlockedMaxStory = 10
         )
         assertTrue(noMatch.isEmpty())
+    }
+
+    @Test
+    fun `dialogue-rich second-half parables 79 and 90 parse cleanly across RU ES and EN`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+
+        for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
+            repository.setLanguage(lang)
+            val builtIn = repository.comics.value.filter { it.isBuiltIn }
+            for (storyNumber in listOf(79, 90)) {
+                val story = builtIn.first { it.storyNumber == storyNumber }
+                assertEquals(4, story.pages.size)
+                val allBubbles = story.pages.flatMap { it.bubbles }
+                assertTrue(
+                    "Story $storyNumber ($lang) must contain speech bubbles",
+                    allBubbles.any { it.style == BubbleStyle.SPEECH || it.style == BubbleStyle.THOUGHT }
+                )
+                assertNotNull(
+                    "Story $storyNumber ($lang) page 4 must include localized moral",
+                    story.pages[3].bubbles.firstOrNull { it.id.endsWith("_moral") }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `library UI displays empty search card on zero results and restores catalog on reset click`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = ComicRepository(context)
+        repository.setLanguage(AppLanguage.RUSSIAN)
+        val comics = repository.comics.value
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                ComicLibraryScreen(
+                    comics = comics,
+                    currentLanguage = AppLanguage.RUSSIAN,
+                    isPremiumUnlocked = false,
+                    seriesUnlocked = false,
+                    adUnlockedMaxStory = 10,
+                    isLoading = false,
+                    snackbarMessage = null,
+                    onClearSnackbar = {},
+                    onSelectLanguage = {},
+                    onOpenSplash = {},
+                    onOpenPaywall = {},
+                    onOpenComic = {},
+                    onManageSequence = {},
+                    onDeleteComic = {},
+                    onImportFolder = {},
+                    onImportMultipleImages = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("library_search_input"))
+
+        composeTestRule.onNodeWithTag("library_search_input")
+            .performTextInput("несбыточный_запрос_xyz")
+
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("library_empty_filter_card"))
+
+        composeTestRule.onNodeWithTag("library_empty_filter_card")
+            .assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("library_reset_filters_btn"))
+
+        composeTestRule.onNodeWithTag("library_reset_filters_btn")
+            .performClick()
+
+        composeTestRule.onNodeWithTag("library_empty_filter_card").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("featured_comic_banner"))
+        composeTestRule.onNodeWithTag("featured_comic_banner").assertIsDisplayed()
     }
 }

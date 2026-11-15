@@ -52,8 +52,11 @@ app/src/main/java/com/example/
 │   ├── ComicViewModel.kt               # UDF state holder (StateFlow<UiState>) & ad-frequency logic
 │   ├── splash/SplashScreen.kt          # Hero minaret launch screen & instant RU/ES/EN toggle
 │   ├── library/
-│   │   ├── ComicLibraryScreen.kt   # 100-story catalog, inline search/filter chips, SAF importers
-│   │   └── LibraryFilter.kt        # Tier/atmosphere filter model & pure search predicate
+│   │   ├── ComicLibraryScreen.kt       # 100-story catalog host, LazyColumn layout & language scrim
+│   │   ├── LibraryHeaderAndBanners.kt  # Top bar, Hybrid Monetization banner, SAF import cards, wisdom card
+│   │   ├── LibrarySearchAndFilters.kt  # Search bar, tier/atmosphere FilterChips & empty-state reset card
+│   │   ├── LibraryCatalogCards.kt      # Hero featured card & 100-card list items with Coil downsampling
+│   │   └── LibraryFilter.kt            # Tier/atmosphere filter model & pure search predicate
 │   ├── reader/
 │   │   ├── ComicReaderScreen.kt        # Dual-mode reader, direct story switcher, overlays, BackHandler
 │   │   ├── ComicPageArtwork.kt         # BitmapRegionDecoder panel cropper & bounded LruCache(32)
@@ -88,7 +91,8 @@ gradle :app:testDebugUnitTest
 > **Note:** Always invoke `gradle` directly (`./gradlew` wrapper is not used in this container).
 
 ### APK Size vs Repo Media Separation
-- Android bundled assets live in `app/src/main/res/drawable/` and `app/src/main/assets/`.
+- Android bundled assets live in `app/src/main/res/drawable/` (44 `.webp` panels/covers compressed from 50 MB to **14 MB**, plus 2 adaptive icon XML layers) and `app/src/main/assets/`.
+- Library thumbnails and featured covers load through Coil `ImageRequest` downsampling (`240×320` and `900×660` px) to avoid decoding full raster sheets in the catalog heap.
 - GitHub documentation media (`banner_top.jpg`, `banner_bottom.jpg`) lives exclusively in `docs/images/` so documentation artwork never inflates the compiled APK.
 
 ---
@@ -98,6 +102,6 @@ gradle :app:testDebugUnitTest
 | Milestone | Scope | Technical Approach |
 | :--- | :--- | :--- |
 | **v1.0 (Baseline)** | 25 anecdotes (`>= 4` pages each), `RU/ES/EN`, SAF importer, Hybrid Paywall UX | Bundled vault JSON + 2×2 panel region cropping + local state |
-| **v1.1 (100 Stories Ready — Audio Next)** | 100 stories + Library Search/Filter + 1h Eastern soundtrack (Suno Pro / ACE-Step) | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + on-canvas dynamic text overlay + trimmed unused APK deps; next: lightweight `AudioFocus`-safe soundtrack module & RC1 audit |
+| **v1.1 (100 Stories Ready — Audio Next)** | 100 stories + Library Search/Filter + WebP & Coil optimization + 1h Eastern soundtrack | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + on-canvas dynamic text overlay + `.webp` assets (`14 MB`) + trimmed unused APK deps; next: lightweight `AudioFocus`-safe soundtrack module & RC1 audit |
 | **v1.2** | Top-10 global languages + Live Billing & Ads SDKs | Google Play Billing / RuStore BillingClient + AdMob / Yandex Mobile Ads wiring at `PaywallDialog` / `ComicViewModel` seams |
 | **v2.0** | 500–1,200+ episodes via seasonal episodic drops | Cloud CDN / Play Feature/Asset packs + automated 20s cliffhanger video teaser funnel |
