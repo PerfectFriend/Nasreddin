@@ -1,21 +1,54 @@
 package com.example.ui.theme
 
+import android.os.Build
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.R
 
 /**
  * Ornate literary display serif (full Cyrillic + Latin Extended support) used on
- * story cover cartouches, splash titles, and illuminated parchment headings.
+ * splash titles and illuminated parchment headings.
  */
 val DisplayTitleFontFamily = FontFamily(
     Font(R.font.playfair_display, FontWeight.Normal),
     Font(R.font.playfair_display, FontWeight.Bold),
     Font(R.font.playfair_display, FontWeight.Black)
+)
+
+/**
+ * Compact Eastern calligraphic display typeface (El Messiri on API 26+, static Philosopher Bold
+ * fallback on API 24-25) tailored for wrapping full parable titles on story covers without clipping.
+ */
+@OptIn(ExperimentalTextApi::class)
+val CoverTitleFontFamily: FontFamily = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    FontFamily(
+        Font(
+            resId = R.font.el_messiri,
+            weight = FontWeight.SemiBold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(650))
+        ),
+        Font(
+            resId = R.font.el_messiri,
+            weight = FontWeight.Bold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(700))
+        )
+    )
+} else {
+    FontFamily(Font(R.font.philosopher, FontWeight.Bold))
+}
+
+/**
+ * High-contrast calligraphic serif (Philosopher Bold, full Cyrillic + Latin Extended) used on
+ * cover episode medallions and ornamental crown labels.
+ */
+val CoverEmblemFontFamily = FontFamily(
+    Font(R.font.philosopher, FontWeight.Bold)
 )
 
 /**

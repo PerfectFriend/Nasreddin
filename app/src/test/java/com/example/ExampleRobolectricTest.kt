@@ -2,21 +2,28 @@ package com.example
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
 import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
+import com.example.ui.components.CoverCartoucheTitleOverlay
 import com.example.ui.components.computeCoverTitleFontSp
+import com.example.ui.components.splitCoverTitleAndBadge
 import com.example.ui.library.ComicLibraryScreen
 import com.example.ui.library.LibraryFilter
 import com.example.ui.library.filterLibraryComics
@@ -660,6 +667,42 @@ class ExampleRobolectricTest {
         assertTrue(fullShort > fullLong)
         assertTrue(fullLong >= 11.5f)
         assertTrue(thumbLong >= 6.5f)
+
+        val split = splitCoverTitleAndBadge("76. Speech Feeds Ears, Warm Spoons Feed the Heart", "Ходжа")
+        assertEquals("№ 76", split.episodeBadge)
+        assertEquals("Speech Feeds Ears, Warm Spoons Feed the Heart", split.headline)
+
+        val customSplit = splitCoverTitleAndBadge("Samarkand Nights", "Custom Edition")
+        assertEquals("Custom Edition", customSplit.episodeBadge)
+        assertEquals("Samarkand Nights", customSplit.headline)
+    }
+
+    @Test
+    fun `cover cartouche separates crown badge and displays longest RU ES EN parable titles without clipping`() {
+        val longestRu = "79. Кто первый заговорит — платит за чай"
+        val longestEs = "2. El olor del guiso y el tintineo de monedas"
+        val longestEn = "76. Speech Feeds Ears, Warm Spoons Feed the Heart"
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                Box(modifier = Modifier.size(300.dp, 400.dp)) {
+                    CoverCartoucheTitleOverlay(title = longestRu, subtitle = "Базар")
+                }
+                Box(modifier = Modifier.size(300.dp, 400.dp)) {
+                    CoverCartoucheTitleOverlay(title = longestEs, subtitle = "Bazar")
+                }
+                Box(modifier = Modifier.size(180.dp, 240.dp)) {
+                    CoverCartoucheTitleOverlay(title = longestEn, subtitle = "Teahouse")
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("№ 79").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Кто первый заговорит — платит за чай").assertIsDisplayed()
+        composeTestRule.onNodeWithText("№ 2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("El olor del guiso y el tintineo de monedas").assertIsDisplayed()
+        composeTestRule.onNodeWithText("№ 76").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Speech Feeds Ears, Warm Spoons Feed the Heart").assertIsDisplayed()
     }
 
     @Test

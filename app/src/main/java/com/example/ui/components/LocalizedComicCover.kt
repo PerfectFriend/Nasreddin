@@ -1,22 +1,35 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -34,23 +47,51 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.ui.reader.computeFittedArtworkRect
-import com.example.ui.theme.DisplayTitleFontFamily
-import com.example.ui.theme.ParchmentHeadingFontFamily
+import com.example.ui.theme.CoverEmblemFontFamily
+import com.example.ui.theme.CoverTitleFontFamily
 import kotlin.math.roundToInt
 
+internal data class CoverTitleParts(
+    val episodeBadge: String?,
+    val headline: String
+)
+
+private val EPISODE_PREFIX_REGEX = Regex("^(\\d+)\\.\\s+(.+)$")
+
 /**
- * Pure helper computing responsive serif title font size inside the ornate blank top cartouche
- * of generated Eastern covers (`x = 0.22..0.78`, `y = 0.112..0.240`).
+ * Separates an optional numeric prefix (e.g. `"76. Speech Feeds Ears..."`) into an illuminated
+ * crown medallion label (`"№ 76"`) and the pure parable name so 100% of the cartouche ribbon
+ * width stays dedicated to wrapping the full parable title cleanly.
+ */
+internal fun splitCoverTitleAndBadge(
+    rawTitle: String,
+    fallbackSubtitle: String? = null
+): CoverTitleParts {
+    val trimmed = rawTitle.trim()
+    val match = EPISODE_PREFIX_REGEX.matchEntire(trimmed)
+    return if (match != null) {
+        val number = match.groupValues[1]
+        val body = match.groupValues[2].trim()
+        CoverTitleParts(episodeBadge = "№ $number", headline = body)
+    } else {
+        val cleanSub = fallbackSubtitle?.trim()?.takeIf { it.isNotBlank() }
+        CoverTitleParts(episodeBadge = cleanSub, headline = trimmed)
+    }
+}
+
+/**
+ * Pure helper computing initial responsive Eastern calligraphic font size ([CoverTitleFontFamily])
+ * for the widened cover parchment scroll (`78%` cover width, multi-line wrapping).
  */
 internal fun computeCoverTitleFontSp(
     titleLength: Int,
     availableWidthDp: Float
 ): Float {
     val base = when {
-        availableWidthDp >= 280f -> 20.5f
-        availableWidthDp >= 180f -> 15.0f
-        availableWidthDp >= 115f -> 10.5f
-        else -> 7.8f
+        availableWidthDp >= 280f -> 21.0f
+        availableWidthDp >= 165f -> 14.5f
+        availableWidthDp >= 110f -> 11.0f
+        else -> 8.2f
     }
     val lengthScale = when {
         titleLength > 48 -> 0.72f
@@ -58,14 +99,22 @@ internal fun computeCoverTitleFontSp(
         titleLength > 24 -> 0.90f
         else -> 1.0f
     }
-    val minSp = if (availableWidthDp >= 180f) 11.5f else 6.5f
+    val minSp = when {
+        availableWidthDp >= 280f -> 11.5f
+        availableWidthDp >= 165f -> 9.0f
+        else -> 6.5f
+    }
     return (base * lengthScale).coerceAtLeast(minSp)
 }
 
 /**
- * Dynamically renders the localized story title inside the dedicated top cream-parchment
- * cartouche of every generated Eastern cover (`3:4` aspect ratio, cartouche centered around
- * `x = 0.50f`, `y = 0.175f`, spanning `56%` width and `12.6%` height).
+ * Dynamically renders the localized story title inside a widened illuminated parchment scroll
+ * (`78%` artwork width, centered at `y = 0.19f`, `heightIn` flexible up to `22.5%` cover height)
+ * topped by a lapis-and-gold episode medallion (`№ X`) using [CoverTitleFontFamily] (El Messiri)
+ * paired with [CoverEmblemFontFamily] (Philosopher Bold).
+ *
+ * Uses multi-line soft wrapping (`maxLines = 4`) plus an automatic `onTextLayout` scale guard so
+ * even the longest localized parable title fits completely without `...` truncation.
  */
 @Composable
 fun CoverCartoucheTitleOverlay(
@@ -77,6 +126,7 @@ fun CoverCartoucheTitleOverlay(
 ) {
     if (title.isBlank()) return
     val density = LocalDensity.current
+    val parts = remember(title, subtitle) { splitCoverTitleAndBadge(title, subtitle) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val containerWidthPx = with(density) { maxWidth.toPx() }
@@ -90,54 +140,118 @@ fun CoverCartoucheTitleOverlay(
         val fittedWidthDp = with(density) { fitted.widthPx.toDp() }
         val fittedHeightDp = with(density) { fitted.heightPx.toDp() }
 
-        // Blank cartouche interior lies reliably within x = 0.22..0.78, y = 0.114..0.236
-        val cartoucheWidthDp = (fittedWidthDp * 0.54f).coerceAtLeast(16.dp)
-        val cartoucheHeightDp = (fittedHeightDp * 0.122f).coerceAtLeast(10.dp)
-        val fontSizeSp = computeCoverTitleFontSp(title.length, fittedWidthDp.value)
-        val lineHeightSp = (fontSizeSp * 1.15f)
-        val showSub = !subtitle.isNullOrBlank() && fittedWidthDp.value >= 150f
+        val displayHeadline = if (fittedWidthDp.value >= 100f) parts.headline else title
+        val initialFontSp = computeCoverTitleFontSp(displayHeadline.length, fittedWidthDp.value)
+        val minAutoSp = when {
+            fittedWidthDp.value >= 280f -> 10.0f
+            fittedWidthDp.value >= 165f -> 8.0f
+            else -> 4.8f
+        }
+        var adjustedFontSp by remember(displayHeadline, initialFontSp) {
+            mutableFloatStateOf(initialFontSp)
+        }
+
+        val bannerWidthDp = (fittedWidthDp * 0.78f).coerceAtLeast(20.dp)
+        val minBannerHeightDp = (fittedHeightDp * 0.118f).coerceAtLeast(10.dp)
+        val maxBannerHeightDp = (fittedHeightDp * 0.228f).coerceAtLeast(16.dp)
+        val lineHeightSp = adjustedFontSp * 1.12f
+        val showCrownBadge = fittedWidthDp.value >= 115f && !parts.episodeBadge.isNullOrBlank()
+        val isCompactThumb = fittedWidthDp.value < 105f
 
         Box(
             modifier = Modifier
                 .offset { IntOffset(fitted.leftPx.roundToInt(), fitted.topPx.roundToInt()) }
                 .size(fittedWidthDp, fittedHeightDp)
         ) {
-            Column(
+            // 1. Wide illuminated parchment scroll banner spanning 78% width across the upper frieze
+            Box(
                 modifier = Modifier
                     .align(Alignment { size, space, _ ->
                         val cx = (space.width * 0.50f - size.width / 2f).roundToInt()
-                        val cy = (space.height * 0.175f - size.height / 2f).roundToInt()
+                        val cy = (space.height * 0.188f - size.height / 2f).roundToInt()
                         IntOffset(cx, cy)
                     })
-                    .size(cartoucheWidthDp, cartoucheHeightDp)
-                    .padding(horizontal = if (fittedWidthDp.value >= 140f) 6.dp else 2.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .width(bannerWidthDp)
+                    .heightIn(min = minBannerHeightDp, max = maxBannerHeightDp)
+                    .wrapContentHeight()
+                    .clip(RoundedCornerShape(if (isCompactThumb) 4.dp else 11.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xF5FCF2DA),
+                                Color(0xF5F6E6BE),
+                                Color(0xF5EDD59F)
+                            )
+                        )
+                    )
+                    .border(
+                        width = if (isCompactThumb) 0.7.dp else 1.4.dp,
+                        color = Color(0xFFC28923),
+                        shape = RoundedCornerShape(if (isCompactThumb) 4.dp else 11.dp)
+                    )
+                    .padding(
+                        start = if (isCompactThumb) 3.dp else 10.dp,
+                        end = if (isCompactThumb) 3.dp else 10.dp,
+                        top = when {
+                            showCrownBadge && fittedWidthDp.value >= 250f -> 11.dp
+                            showCrownBadge -> 8.dp
+                            isCompactThumb -> 2.dp
+                            else -> 7.dp
+                        },
+                        bottom = if (isCompactThumb) 2.dp else 7.dp
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                if (showSub && subtitle != null) {
+                Text(
+                    text = displayHeadline,
+                    fontFamily = CoverTitleFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = adjustedFontSp.sp,
+                    lineHeight = lineHeightSp.sp,
+                    color = Color(0xFF211004),
+                    softWrap = true,
+                    maxLines = 4,
+                    overflow = TextOverflow.Clip,
+                    textAlign = TextAlign.Center,
+                    onTextLayout = { layoutResult ->
+                        val hasOverflow = layoutResult.didOverflowHeight ||
+                            layoutResult.didOverflowWidth ||
+                            layoutResult.hasVisualOverflow
+                        if (hasOverflow && adjustedFontSp > minAutoSp) {
+                            adjustedFontSp = (adjustedFontSp * 0.88f).coerceAtLeast(minAutoSp)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // 2. Lapis-and-Gold crown medallion resting gracefully above the parchment scroll
+            if (showCrownBadge) {
+                Surface(
+                    color = Color(0xFF0C1C3E),
+                    shape = RoundedCornerShape(99.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE7BD56)),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.align(Alignment { size, space, _ ->
+                        val cx = (space.width * 0.50f - size.width / 2f).roundToInt()
+                        val cy = (space.height * 0.082f - size.height / 2f).roundToInt()
+                        IntOffset(cx, cy)
+                    })
+                ) {
                     Text(
-                        text = subtitle,
-                        fontFamily = ParchmentHeadingFontFamily,
+                        text = parts.episodeBadge.orEmpty(),
+                        fontFamily = CoverEmblemFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = (fontSizeSp * 0.48f).coerceIn(8f, 11.5f).sp,
-                        color = Color(0xFF7A4812),
-                        letterSpacing = 0.8.sp,
+                        fontSize = if (fittedWidthDp.value >= 250f) 11.5.sp else 9.sp,
+                        letterSpacing = 0.9.sp,
+                        color = Color(0xFFFAE18E),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
+                        modifier = Modifier.padding(
+                            horizontal = if (fittedWidthDp.value >= 250f) 12.dp else 7.dp,
+                            vertical = if (fittedWidthDp.value >= 250f) 2.5.dp else 1.dp
+                        )
                     )
                 }
-                Text(
-                    text = title,
-                    fontFamily = DisplayTitleFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = fontSizeSp.sp,
-                    lineHeight = lineHeightSp.sp,
-                    color = Color(0xFF281406),
-                    maxLines = if (showSub) 2 else 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
