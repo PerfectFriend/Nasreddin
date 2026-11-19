@@ -74,7 +74,9 @@ data class ComicPage(
     val sequenceNumber: Int = 0,
     val language: AppLanguage? = null,
     val panelCrop: PanelCrop? = null,
-    val bubbles: List<SpeechBubble> = emptyList()
+    val bubbles: List<SpeechBubble> = emptyList(),
+    val coverTitle: String? = null,
+    val coverSubtitle: String? = null
 )
 
 /**
@@ -96,7 +98,9 @@ data class ComicBook(
     val language: AppLanguage = AppLanguage.RUSSIAN,
     val isFree: Boolean = true,
     val storyNumber: Int = 1,
-    val themeTag: String = "bazaar"
+    val themeTag: String = "bazaar",
+    val fullStoryText: String = "",
+    val moralText: String = ""
 )
 
 enum class ReadingMode {

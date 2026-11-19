@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,16 +42,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.model.AppLanguage
 import com.example.model.ComicBook
+import com.example.ui.components.LocalizedComicCover
 import com.example.ui.theme.CyberMidnight
 import com.example.ui.theme.CyberNeonCyan
 import com.example.ui.theme.CyberSurfaceDark
@@ -59,16 +60,17 @@ import com.example.util.AppStrings
 
 /**
  * Featured hero story card at the top of the library when no search/filter is active.
- * Downsamples cover artwork to `900x660` px via Coil [ImageRequest].
+ * Displays the complete uncropped `3:4` Eastern cover with its dynamically localized cartouche
+ * title, plus actions to read the comic, open the full parchment text, or manage page order.
  */
 @Composable
 internal fun FeaturedComicBanner(
     comic: ComicBook,
     currentLanguage: AppLanguage,
     onRead: () -> Unit,
+    onOpenParchment: () -> Unit,
     onManageSequence: () -> Unit
 ) {
-    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -82,40 +84,37 @@ internal fun FeaturedComicBanner(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
-                    .background(Color.Black)
-            ) {
-                val coverData = comic.coverDrawableResId ?: comic.coverUriString
-                if (coverData != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(coverData)
-                            .size(900, 660)
-                            .crossfade(false)
-                            .build(),
-                        contentDescription = comic.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    CyberSurfaceElevated.copy(alpha = 0.8f),
-                                    CyberSurfaceElevated
-                                )
+                    .height(252.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF071128),
+                                Color(0xFF142B56),
+                                Color(0xFF071128)
                             )
                         )
+                    )
+            ) {
+                LocalizedComicCover(
+                    title = comic.title,
+                    subtitle = comic.subtitle,
+                    drawableResId = comic.coverDrawableResId,
+                    uriString = comic.coverUriString,
+                    targetWidthPx = 480,
+                    targetHeightPx = 640,
+                    showCartoucheTitle = true,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxHeight()
+                        .padding(vertical = 8.dp)
+                        .aspectRatio(0.75f)
+                        .clip(RoundedCornerShape(10.dp))
                 )
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color.Black.copy(alpha = 0.75f),
+                    color = Color.Black.copy(alpha = 0.78f),
                     border = BorderStroke(1.dp, CyberNeonCyan),
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -170,13 +169,14 @@ internal fun FeaturedComicBanner(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
                         onClick = onRead,
                         modifier = Modifier
-                            .weight(1.4f)
-                            .height(46.dp)
+                            .weight(1.25f)
+                            .heightIn(min = 48.dp)
                             .testTag("featured_read_btn"),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = VanGoghStarGold,
@@ -185,35 +185,64 @@ internal fun FeaturedComicBanner(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (comic.lastReadPageIndex > 0) {
                                 AppStrings.continueReading(currentLanguage, comic.lastReadPageIndex + 1)
                             } else {
                                 AppStrings.readButton(currentLanguage)
                             },
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
                     FilledTonalButton(
-                        onClick = onManageSequence,
+                        onClick = onOpenParchment,
                         modifier = Modifier
                             .weight(1f)
-                            .height(46.dp)
-                            .testTag("featured_sequence_btn"),
+                            .heightIn(min = 48.dp)
+                            .testTag("featured_parchment_btn"),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = CyberMidnight,
-                            contentColor = CyberNeonCyan
+                            containerColor = Color(0xFFF3DFB2),
+                            contentColor = Color(0xFF281406)
                         ),
+                        border = BorderStroke(1.dp, VanGoghStarGold),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = AppStrings.parchmentOpenTooltip(currentLanguage),
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = AppStrings.pageSequence(currentLanguage, comic.pages.size),
-                            fontSize = 12.sp
+                            text = AppStrings.parchmentShortLabel(currentLanguage),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = CyberMidnight,
+                        border = BorderStroke(1.dp, CyberNeonCyan.copy(alpha = 0.4f))
+                    ) {
+                        IconButton(
+                            onClick = onManageSequence,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .testTag("featured_sequence_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatListNumbered,
+                                contentDescription = AppStrings.pageSequence(currentLanguage, comic.pages.size),
+                                tint = CyberNeonCyan
+                            )
+                        }
                     }
                 }
             }
@@ -223,8 +252,8 @@ internal fun FeaturedComicBanner(
 
 /**
  * Individual story card inside the 100-story library list.
- * Downsamples cover artwork to thumbnail bounds (`240x320` px) via Coil [ImageRequest] so scrolling
- * across 100 cards keeps bitmap heap allocations minimal.
+ * Downsamples `3:4` ornate Eastern covers to `240x320` px via Coil while dynamically stamping
+ * the story's localized title into the top cartouche, plus quick Comic, Parchment Text, and Sequence actions.
  */
 @Composable
 internal fun ComicListItemCard(
@@ -234,10 +263,10 @@ internal fun ComicListItemCard(
     seriesUnlocked: Boolean,
     adUnlockedMaxStory: Int,
     onRead: () -> Unit,
+    onOpenParchment: () -> Unit,
     onManageSequence: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val context = LocalContext.current
     val isUnlockedViaAd = !comic.isFree && !isPremiumUnlocked && !seriesUnlocked && comic.storyNumber <= adUnlockedMaxStory
     val isLocked = !comic.isFree && !isPremiumUnlocked && !seriesUnlocked && comic.storyNumber > adUnlockedMaxStory
 
@@ -262,29 +291,26 @@ internal fun ComicListItemCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(68.dp, 90.dp)
+                    .size(72.dp, 96.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black)
+                    .background(Color(0xFF0A142D))
             ) {
-                val thumbData = comic.coverDrawableResId ?: comic.coverUriString
-                if (thumbData != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(thumbData)
-                            .size(240, 320)
-                            .crossfade(false)
-                            .build(),
-                        contentDescription = comic.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                LocalizedComicCover(
+                    title = comic.title,
+                    drawableResId = comic.coverDrawableResId,
+                    uriString = comic.coverUriString,
+                    targetWidthPx = 240,
+                    targetHeightPx = 320,
+                    showCartoucheTitle = true,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
 
                 if (isLocked) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
+                            .background(Color.Black.copy(alpha = 0.52f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -367,10 +393,13 @@ internal fun ComicListItemCard(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     FilledTonalButton(
                         onClick = onRead,
-                        modifier = Modifier.height(32.dp),
+                        modifier = Modifier.heightIn(min = 38.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = if (isLocked) VanGoghStarGold else VanGoghStarGold.copy(alpha = 0.2f),
@@ -384,20 +413,47 @@ internal fun ComicListItemCard(
                         Text(
                             if (isLocked) AppStrings.unlockCtaChip(currentLanguage) else AppStrings.readButton(currentLanguage),
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                     }
 
                     FilledTonalButton(
-                        onClick = onManageSequence,
-                        modifier = Modifier.height(32.dp),
+                        onClick = onOpenParchment,
+                        modifier = Modifier
+                            .heightIn(min = 38.dp)
+                            .testTag("comic_parchment_btn_${comic.id}"),
                         contentPadding = PaddingValues(horizontal = 10.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = CyberSurfaceElevated,
-                            contentColor = CyberNeonCyan
-                        )
+                            containerColor = Color(0xFFF3DFB2),
+                            contentColor = Color(0xFF281406)
+                        ),
+                        border = BorderStroke(1.dp, VanGoghStarGold.copy(alpha = 0.8f))
                     ) {
-                        Text(AppStrings.pageOrderButton(currentLanguage), fontSize = 11.sp)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = AppStrings.parchmentOpenTooltip(currentLanguage),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = AppStrings.parchmentShortLabel(currentLanguage),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onManageSequence,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FormatListNumbered,
+                            contentDescription = AppStrings.pageOrderButton(currentLanguage),
+                            tint = CyberNeonCyan,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }

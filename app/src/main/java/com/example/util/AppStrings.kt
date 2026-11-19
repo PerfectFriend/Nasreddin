@@ -678,4 +678,46 @@ object AppStrings {
         AppLanguage.SPANISH -> "Restablecer filtros"
         AppLanguage.ENGLISH -> "Reset filters"
     }
+
+    fun coverPageTitle(lang: AppLanguage, seq: Int, title: String): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Обложка • $seq. $title"
+        AppLanguage.SPANISH -> "Portada • $seq. $title"
+        AppLanguage.ENGLISH -> "Cover • $seq. $title"
+    }
+
+    fun parchmentEpisodeBadge(lang: AppLanguage, seq: Int): String = when (lang) {
+        AppLanguage.RUSSIAN -> "ПРИТЧА №$seq • ХОДЖА НАСРЕДДИН"
+        AppLanguage.SPANISH -> "RELATO #$seq • NASREDDIN HODJA"
+        AppLanguage.ENGLISH -> "TALE #$seq • HODJA NASREDDIN"
+    }
+
+    fun parchmentButtonLabel(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Текст на пергаменте"
+        AppLanguage.SPANISH -> "Texto en pergamino"
+        AppLanguage.ENGLISH -> "Story on Parchment"
+    }
+
+    fun parchmentShortLabel(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Пергамент"
+        AppLanguage.SPANISH -> "Pergamino"
+        AppLanguage.ENGLISH -> "Parchment"
+    }
+
+    fun parchmentOpenTooltip(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Открыть историю на пергаменте"
+        AppLanguage.SPANISH -> "Abrir historia en pergamino"
+        AppLanguage.ENGLISH -> "Open story on parchment"
+    }
+
+    fun parchmentMoralHeader(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Мудрость притчи"
+        AppLanguage.SPANISH -> "Moraleja de la historia"
+        AppLanguage.ENGLISH -> "Moral of the Tale"
+    }
+
+    fun coverSwipeHint(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Листайте дальше, чтобы читать притчу"
+        AppLanguage.SPANISH -> "Desliza para leer el cómic"
+        AppLanguage.ENGLISH -> "Swipe to read the comic"
+    }
 }

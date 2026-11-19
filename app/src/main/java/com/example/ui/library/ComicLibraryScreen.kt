@@ -93,6 +93,7 @@ fun ComicLibraryScreen(
     onOpenSplash: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenComic: (ComicBook) -> Unit,
+    onOpenParchment: (ComicBook) -> Unit = {},
     onManageSequence: (ComicBook) -> Unit,
     onDeleteComic: (String) -> Unit,
     onImportFolder: (Uri) -> Unit,
@@ -202,6 +203,7 @@ fun ComicLibraryScreen(
                                 comic = featuredComic,
                                 currentLanguage = currentLanguage,
                                 onRead = { onOpenComic(featuredComic) },
+                                onOpenParchment = { onOpenParchment(featuredComic) },
                                 onManageSequence = { onManageSequence(featuredComic) }
                             )
                         }
@@ -268,6 +270,7 @@ fun ComicLibraryScreen(
                             seriesUnlocked = seriesUnlocked,
                             adUnlockedMaxStory = adUnlockedMaxStory,
                             onRead = { onOpenComic(comic) },
+                            onOpenParchment = { onOpenParchment(comic) },
                             onManageSequence = { onManageSequence(comic) },
                             onDelete = { onDeleteComic(comic.id) }
                         )

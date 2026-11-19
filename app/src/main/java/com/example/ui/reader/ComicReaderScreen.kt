@@ -86,6 +86,7 @@ import com.example.model.AppLanguage
 import com.example.model.ComicBook
 import com.example.model.ReaderBackground
 import com.example.model.ReadingMode
+import com.example.ui.components.LocalizedComicCover
 import com.example.ui.theme.CyberMidnight
 import com.example.ui.theme.CyberNeonCyan
 import com.example.ui.theme.CyberSurfaceDark
@@ -417,29 +418,71 @@ fun ComicReaderScreen(
                                             )
                                         }
 
-                                        Surface(
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = CyberMidnight.copy(alpha = 0.8f),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, VanGoghStarGold.copy(alpha = 0.4f)),
-                                            modifier = Modifier.clickable { onToggleThumbnails(!isThumbnailDrawerOpen) }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                            Surface(
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = CyberMidnight.copy(alpha = 0.8f),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, VanGoghStarGold.copy(alpha = 0.4f)),
+                                                modifier = Modifier
+                                                    .heightIn(min = 48.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable { onToggleThumbnails(!isThumbnailDrawerOpen) }
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.GridView,
-                                                    contentDescription = null,
-                                                    tint = VanGoghStarGold,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = AppStrings.pageCounter(currentLanguage, currentPageIdx + 1, totalPages),
-                                                    color = Color.White,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 13.sp
-                                                )
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.GridView,
+                                                        contentDescription = null,
+                                                        tint = VanGoghStarGold,
+                                                        modifier = Modifier.size(13.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = AppStrings.pageCounter(currentLanguage, currentPageIdx + 1, totalPages),
+                                                        color = Color.White,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 11.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = Color(0xFFF3DFB2),
+                                                border = androidx.compose.foundation.BorderStroke(1.2.dp, VanGoghStarGold),
+                                                modifier = Modifier
+                                                    .heightIn(min = 48.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable { onOpenLore() }
+                                                    .testTag("reader_parchment_button")
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                                        contentDescription = AppStrings.parchmentOpenTooltip(currentLanguage),
+                                                        tint = Color(0xFF281406),
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = AppStrings.parchmentShortLabel(currentLanguage),
+                                                        color = Color(0xFF281406),
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 11.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
                                         }
 
@@ -779,26 +822,21 @@ fun ComicReaderScreen(
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(44.dp, 54.dp)
+                                                .size(48.dp, 64.dp)
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(Color.Black),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            if (itemComic.coverDrawableResId != null) {
-                                                Image(
-                                                    painter = painterResource(id = itemComic.coverDrawableResId),
-                                                    contentDescription = itemComic.title,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else if (itemComic.coverUriString != null) {
-                                                AsyncImage(
-                                                    model = itemComic.coverUriString,
-                                                    contentDescription = itemComic.title,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            }
+                                            LocalizedComicCover(
+                                                title = itemComic.title,
+                                                drawableResId = itemComic.coverDrawableResId,
+                                                uriString = itemComic.coverUriString,
+                                                targetWidthPx = 144,
+                                                targetHeightPx = 192,
+                                                showCartoucheTitle = true,
+                                                contentScale = ContentScale.Fit,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                             if (isLocked) {
                                                 Box(
                                                     modifier = Modifier

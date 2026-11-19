@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
@@ -15,6 +16,7 @@ import com.example.model.AppLanguage
 import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
 import com.example.ui.ComicViewModel
+import com.example.ui.components.computeCoverTitleFontSp
 import com.example.ui.library.ComicLibraryScreen
 import com.example.ui.library.LibraryFilter
 import com.example.ui.library.filterLibraryComics
@@ -116,31 +118,43 @@ class ExampleRobolectricTest {
         val repository = ComicRepository(context)
 
         val ruComic = repository.getBuiltInRussianComic()
-        assertEquals(R.drawable.img_comic_ru_cover, ruComic.coverDrawableResId)
-        assertEquals(R.drawable.img_comic_ru_cover, ruComic.pages[0].drawableResId)
+        assertEquals(R.drawable.img_cover_mosque, ruComic.coverDrawableResId)
+        assertEquals(R.drawable.img_cover_mosque, ruComic.pages[0].drawableResId)
+        assertEquals(ruComic.title, ruComic.pages[0].coverTitle)
         assertEquals(R.drawable.img_comic_ru_p1_v2, ruComic.pages[1].drawableResId)
         assertEquals(R.drawable.img_comic_ru_p2_v2, ruComic.pages[2].drawableResId)
         assertEquals(R.drawable.img_comic_ru_p3_v2, ruComic.pages[3].drawableResId)
+        assertTrue(ruComic.fullStoryText.isNotBlank() && ruComic.moralText.isNotBlank())
 
         val esComic = repository.getBuiltInSpanishComic()
-        assertEquals(R.drawable.img_comic_es_cover, esComic.coverDrawableResId)
-        assertEquals(R.drawable.img_comic_es_cover, esComic.pages[0].drawableResId)
+        assertEquals(R.drawable.img_cover_mosque, esComic.coverDrawableResId)
+        assertEquals(R.drawable.img_cover_mosque, esComic.pages[0].drawableResId)
+        assertEquals(esComic.title, esComic.pages[0].coverTitle)
         assertEquals(R.drawable.img_comic_es_p1_v2, esComic.pages[1].drawableResId)
         assertEquals(R.drawable.img_comic_es_p2_v2, esComic.pages[2].drawableResId)
         assertEquals(R.drawable.img_comic_es_p3_v2, esComic.pages[3].drawableResId)
+        assertTrue(esComic.fullStoryText.isNotBlank() && esComic.moralText.isNotBlank())
 
         val enComic = repository.getBuiltInEnglishComic()
-        assertEquals(R.drawable.img_comic_en_cover, enComic.coverDrawableResId)
-        assertEquals(R.drawable.img_comic_en_cover, enComic.pages[0].drawableResId)
+        assertEquals(R.drawable.img_cover_mosque, enComic.coverDrawableResId)
+        assertEquals(R.drawable.img_cover_mosque, enComic.pages[0].drawableResId)
+        assertEquals(enComic.title, enComic.pages[0].coverTitle)
         assertEquals(R.drawable.img_comic_en_p1_v2, enComic.pages[1].drawableResId)
         assertEquals(R.drawable.img_comic_en_p2_v2, enComic.pages[2].drawableResId)
         assertEquals(R.drawable.img_comic_en_p3_v2, enComic.pages[3].drawableResId)
+        assertTrue(enComic.fullStoryText.isNotBlank() && enComic.moralText.isNotBlank())
     }
 
     @Test
-    fun `all 100 stories have at least 4 pages and episodes 2 to 10 split into 4 panel crops across RU ES and EN`() {
+    fun `all 100 stories have at least 4 pages and episodes 2 to 10 include cover plus 4 panel crops across RU ES and EN`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
+        val themedCovers = setOf(
+            R.drawable.img_cover_mosque,
+            R.drawable.img_cover_bazaar,
+            R.drawable.img_cover_teahouse,
+            R.drawable.img_cover_night
+        )
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
@@ -158,16 +172,16 @@ class ExampleRobolectricTest {
             val freeComics = allBuiltIn.filter { it.isFree }
             assertEquals(10, freeComics.size)
 
-            val coverDrawables = freeComics.mapNotNull { it.coverDrawableResId }.toSet()
-            assertEquals("Expected 10 distinct covers for $lang", 10, coverDrawables.size)
-
             for (ep in freeComics.drop(1)) {
-                assertEquals(4, ep.pages.size)
-                assertEquals(4, ep.pages.mapNotNull { it.panelCrop }.toSet().size)
-                for (page in ep.pages) {
-                    assertNotNull(page.drawableResId)
-                    assertEquals(ep.coverDrawableResId, page.drawableResId)
-                }
+                assertEquals(5, ep.pages.size)
+                assertEquals(ep.coverDrawableResId, ep.pages[0].drawableResId)
+                assertTrue(ep.coverDrawableResId in themedCovers)
+                assertEquals(ep.title, ep.pages[0].coverTitle)
+
+                val panelPages = ep.pages.drop(1)
+                assertEquals(4, panelPages.mapNotNull { it.panelCrop }.toSet().size)
+                val panelSheetResIds = panelPages.mapNotNull { it.drawableResId }.toSet()
+                assertEquals(1, panelSheetResIds.size)
             }
         }
     }
@@ -185,7 +199,7 @@ class ExampleRobolectricTest {
         viewModel.openNextComic()
         assertEquals(2, viewModel.uiState.value.activeComic?.storyNumber)
         assertEquals(0, viewModel.uiState.value.currentPageIndex)
-        assertEquals(4, viewModel.uiState.value.activeComic?.pages?.size)
+        assertEquals(5, viewModel.uiState.value.activeComic?.pages?.size)
 
         viewModel.openNextComic()
         assertEquals(3, viewModel.uiState.value.activeComic?.storyNumber)
@@ -312,10 +326,15 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `stories 11 to 100 share 3 thematic text-free templates across RU ES EN with localized speech bubbles`() {
+    fun `stories 11 to 100 share 3 thematic cover templates and 3 panel sheets across RU ES EN with localized cartouche titles`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
+        val expectedUniversalCovers = setOf(
+            R.drawable.img_cover_bazaar,
+            R.drawable.img_cover_teahouse,
+            R.drawable.img_cover_night
+        )
         val expectedUniversalDrawables = setOf(
             R.drawable.img_universal_hodja_template,
             R.drawable.img_universal_hodja_teahouse,
@@ -328,21 +347,26 @@ class ExampleRobolectricTest {
             val premiumStories = repository.comics.value.filter { it.isBuiltIn && it.storyNumber >= 11 }
             assertEquals(90, premiumStories.size)
 
-            val usedDrawables = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
+            val usedCovers = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
             assertEquals(
-                "Stories 11..100 ($lang) should utilize all 3 thematic universal templates",
-                expectedUniversalDrawables,
-                usedDrawables
+                "Stories 11..100 ($lang) should utilize all 3 thematic Eastern covers",
+                expectedUniversalCovers,
+                usedCovers
             )
 
             val firstBubbleTexts = mutableListOf<String>()
             for (story in premiumStories) {
-                assertTrue(story.coverDrawableResId in expectedUniversalDrawables)
-                assertEquals(4, story.pages.size)
-                assertEquals(4, story.pages.mapNotNull { it.panelCrop }.toSet().size)
+                assertTrue(story.coverDrawableResId in expectedUniversalCovers)
+                assertEquals(5, story.pages.size)
+                assertEquals(story.coverDrawableResId, story.pages[0].drawableResId)
+                assertEquals(story.title, story.pages[0].coverTitle)
+                assertTrue(story.fullStoryText.isNotBlank())
 
-                for (page in story.pages) {
-                    assertEquals(story.coverDrawableResId, page.drawableResId)
+                val panelPages = story.pages.drop(1)
+                assertEquals(4, panelPages.mapNotNull { it.panelCrop }.toSet().size)
+
+                for (page in panelPages) {
+                    assertTrue(page.drawableResId in expectedUniversalDrawables)
                     assertTrue(
                         "Story ${story.storyNumber} ($lang) page ${page.sequenceNumber} must have dynamic bubbles",
                         page.bubbles.isNotEmpty()
@@ -353,7 +377,7 @@ class ExampleRobolectricTest {
                         assertTrue(bubble.centerY in 0f..1f)
                     }
                 }
-                firstBubbleTexts.add(story.pages.first().bubbles.first().text)
+                firstBubbleTexts.add(panelPages.first().bubbles.first().text)
             }
             collectTitlesByStory[lang] = firstBubbleTexts
         }
@@ -419,7 +443,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `golden reference parables 12 and 22 maintain stable 4-beat bubble layout and localized morals`() {
+    fun `golden reference parables 12 and 22 maintain stable 5-page layout and localized morals`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
@@ -430,7 +454,9 @@ class ExampleRobolectricTest {
             // Golden story #12 ("Потерянный осел") and #22 ("Ты тоже прав")
             for (storyNumber in listOf(12, 22)) {
                 val story = builtIn.first { it.storyNumber == storyNumber }
-                assertEquals(4, story.pages.size)
+                assertEquals(5, story.pages.size)
+                assertTrue(story.fullStoryText.isNotBlank())
+                assertTrue(story.moralText.isNotBlank())
 
                 // Should extract at least one dialogue/thought SPEECH bubble across the 4 scenes
                 val allBubbles = story.pages.flatMap { it.bubbles }
@@ -439,9 +465,9 @@ class ExampleRobolectricTest {
                     allBubbles.any { it.style == BubbleStyle.SPEECH || it.style == BubbleStyle.THOUGHT }
                 )
 
-                // Page 4 must carry localized moral plaque in RU, ES, and EN
-                val moralBubble = story.pages[3].bubbles.firstOrNull { it.id.endsWith("_moral") }
-                assertNotNull("Story $storyNumber ($lang) page 4 must have localized moral bubble", moralBubble)
+                // Final panel (index 4) must carry localized moral plaque in RU, ES, and EN
+                val moralBubble = story.pages[4].bubbles.firstOrNull { it.id.endsWith("_moral") }
+                assertNotNull("Story $storyNumber ($lang) page 5 must have localized moral bubble", moralBubble)
                 assertEquals(BubbleStyle.NARRATION, moralBubble!!.style)
                 assertTrue(moralBubble.text.length > 15)
             }
@@ -608,18 +634,85 @@ class ExampleRobolectricTest {
             val builtIn = repository.comics.value.filter { it.isBuiltIn }
             for (storyNumber in listOf(79, 90)) {
                 val story = builtIn.first { it.storyNumber == storyNumber }
-                assertEquals(4, story.pages.size)
+                assertEquals(5, story.pages.size)
                 val allBubbles = story.pages.flatMap { it.bubbles }
                 assertTrue(
                     "Story $storyNumber ($lang) must contain speech bubbles",
                     allBubbles.any { it.style == BubbleStyle.SPEECH || it.style == BubbleStyle.THOUGHT }
                 )
                 assertNotNull(
-                    "Story $storyNumber ($lang) page 4 must include localized moral",
-                    story.pages[3].bubbles.firstOrNull { it.id.endsWith("_moral") }
+                    "Story $storyNumber ($lang) page 5 must include localized moral",
+                    story.pages[4].bubbles.firstOrNull { it.id.endsWith("_moral") }
                 )
             }
         }
+    }
+
+    @Test
+    fun `computeCoverTitleFontSp scales title typography gracefully across thumbnails and fullscreen covers`() {
+        val thumbShort = computeCoverTitleFontSp(titleLength = 16, availableWidthDp = 72f)
+        val thumbLong = computeCoverTitleFontSp(titleLength = 52, availableWidthDp = 72f)
+        val fullShort = computeCoverTitleFontSp(titleLength = 16, availableWidthDp = 320f)
+        val fullLong = computeCoverTitleFontSp(titleLength = 52, availableWidthDp = 320f)
+
+        assertTrue(fullShort > thumbShort)
+        assertTrue(thumbShort > thumbLong)
+        assertTrue(fullShort > fullLong)
+        assertTrue(fullLong >= 11.5f)
+        assertTrue(thumbLong >= 6.5f)
+    }
+
+    @Test
+    fun `clicking Parchment button in Library opens ParchmentStoryDialog in active language and closes cleanly`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = ComicViewModel(app)
+        viewModel.setLanguage(AppLanguage.RUSSIAN)
+        viewModel.clearSnackbar()
+        viewModel.dismissSplash(openReaderDirectly = false)
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                ComicAppContent(viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("featured_parchment_btn"))
+        composeTestRule.onNodeWithTag("featured_parchment_btn").performClick()
+
+        composeTestRule.onNodeWithTag("parchment_dialog_root").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("parchment_story_title").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("parchment_story_body").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("parchment_moral_card").performScrollTo().assertIsDisplayed()
+
+        // Switch language to Spanish while inspecting catalog logic -> parchment remains valid & localized
+        viewModel.setLanguage(AppLanguage.SPANISH)
+        composeTestRule.waitForIdle()
+        assertEquals(AppLanguage.SPANISH, viewModel.uiState.value.parchmentComic?.language)
+
+        composeTestRule.onNodeWithTag("close_parchment_dialog").performClick()
+        composeTestRule.onNodeWithTag("parchment_dialog_root").assertDoesNotExist()
+    }
+
+    @Test
+    fun `clicking Parchment button in Reader opens illuminated ParchmentStoryDialog`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = ComicViewModel(app)
+        viewModel.setLanguage(AppLanguage.ENGLISH)
+        viewModel.dismissSplash(openReaderDirectly = true)
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                ComicAppContent(viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("reader_parchment_button").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithTag("parchment_dialog_root").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("parchment_story_body").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("parchment_done_btn").performClick()
+        composeTestRule.onNodeWithTag("parchment_dialog_root").assertDoesNotExist()
     }
 
     @Test

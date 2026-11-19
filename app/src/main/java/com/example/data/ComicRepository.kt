@@ -23,11 +23,10 @@ import java.util.Locale
  *
  * Design invariants:
  * 1. Only stories matching [currentLanguage] are exposed in [comics] (strict language filtering).
- * 2. Every built-in story strictly provides at least 4 readable pages:
- *    - Story #1 uses 4 full-page illustrations.
- *    - Stories #2..#10 split each localized 2x2 comic sheet into 4 cropped single-panel pages.
- *    - Stories #11..#100 (and beyond) share 3 theme-matched text-free universal 2x2 templates
- *      paired with localized dynamic [com.example.model.SpeechBubble] overlays.
+ * 2. Every built-in story strictly provides at least 4 readable pages (cover + 4 panels = 5 for vault):
+ *    - Story #1 uses a themed localized Eastern cover plus 3 full-page comic scenes (4 pages).
+ *    - Stories #2..#10 prepend a localized Eastern cover page and split each 2x2 comic sheet into 4 panel pages (5 pages).
+ *    - Stories #11..#100 prepend a localized Eastern cover page paired with 4 cropped panel scenes and dynamic localized bubbles (5 pages).
  */
 class ComicRepository(private val context: Context) {
 
@@ -190,10 +189,23 @@ class ComicRepository(private val context: Context) {
 
                 val rawTheme = obj.optString("theme", "")
                 val normalizedTheme = resolveNormalizedTheme(rawTheme, seq)
+                val coverDrawable = resolveStoryCoverDrawable(normalizedTheme, seq)
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
                 val universalTemplateDrawable = resolveUniversalTemplateDrawable(normalizedTheme, seq)
 
-                val pages = if (episodeDrawable != null) {
+                val coverPage = ComicPage(
+                    id = "${id}_cover",
+                    title = AppStrings.coverPageTitle(lang, seq, title),
+                    drawableResId = coverDrawable,
+                    narrativeText = text,
+                    dialogueText = moral.takeIf { it.isNotEmpty() },
+                    sequenceNumber = 1,
+                    language = lang,
+                    coverTitle = "$seq. $title",
+                    coverSubtitle = AppStrings.parchmentEpisodeBadge(lang, seq)
+                )
+
+                val panelPages = if (episodeDrawable != null) {
                     val quadrantCrops = listOf(
                         PanelCrop(left = 0.015f, top = 0.082f, right = 0.496f, bottom = 0.532f),
                         PanelCrop(left = 0.504f, top = 0.082f, right = 0.985f, bottom = 0.532f),
@@ -208,7 +220,7 @@ class ComicRepository(private val context: Context) {
                             drawableResId = episodeDrawable,
                             narrativeText = text,
                             dialogueText = moral.takeIf { it.isNotEmpty() },
-                            sequenceNumber = step,
+                            sequenceNumber = step + 1,
                             language = lang,
                             panelCrop = crop
                         )
@@ -236,13 +248,15 @@ class ComicRepository(private val context: Context) {
                             drawableResId = universalTemplateDrawable,
                             narrativeText = if (step == 4 && moral.isNotEmpty()) moral else text,
                             dialogueText = moral.takeIf { it.isNotEmpty() },
-                            sequenceNumber = step,
+                            sequenceNumber = step + 1,
                             language = lang,
                             panelCrop = crop,
                             bubbles = bubbleBeats.getOrElse(idx) { emptyList() }
                         )
                     }
                 }
+
+                val pages = listOf(coverPage) + panelPages
 
                 val subtitleText = when (lang) {
                     AppLanguage.RUSSIAN -> if (isFree) "Ходжа Насреддин" else "Ходжа Насреддин • Премиум"
@@ -258,14 +272,16 @@ class ComicRepository(private val context: Context) {
                         title = "$seq. $title",
                         subtitle = subtitleText,
                         description = text,
-                        coverDrawableResId = episodeDrawable ?: universalTemplateDrawable,
+                        coverDrawableResId = coverDrawable,
                         pages = pages,
                         isBuiltIn = true,
                         language = lang,
                         isFree = isFree,
                         storyNumber = seq,
                         themeTag = normalizedTheme,
-                        lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
+                        lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+                        fullStoryText = text,
+                        moralText = moral
                     )
                 )
             }
@@ -297,6 +313,20 @@ class ComicRepository(private val context: Context) {
             "teahouse" -> R.drawable.img_universal_hodja_teahouse
             "night" -> R.drawable.img_universal_hodja_night
             else -> R.drawable.img_universal_hodja_template
+        }
+    }
+
+    /**
+     * Resolves an ornate Eastern-framed cover template with a blank title cartouche
+     * matching each story's atmosphere ("mosque" for Story #1, otherwise "bazaar",
+     * "teahouse", or "night").
+     */
+    internal fun resolveStoryCoverDrawable(theme: String?, sequence: Int): Int {
+        if (sequence == 1) return R.drawable.img_cover_mosque
+        return when (resolveNormalizedTheme(theme, sequence)) {
+            "teahouse" -> R.drawable.img_cover_teahouse
+            "night" -> R.drawable.img_cover_night
+            else -> R.drawable.img_cover_bazaar
         }
     }
 
@@ -386,21 +416,24 @@ class ComicRepository(private val context: Context) {
 
     fun getBuiltInRussianComic(): ComicBook {
         val savedProgress = prefs.getInt("progress_$BUILT_IN_RU_ID", 0)
+        val storyTitle = "1. Проповедь в мечети"
 
         val pages = listOf(
             ComicPage(
                 id = "builtin_ru_cover",
-                title = "Обложка • Нео-Акшехир",
-                drawableResId = R.drawable.img_comic_ru_cover,
-                narrativeText = "В кибернетическом мегаполисе Нео-Акшехир минареты взмывают в звездное небо. Мудрец Ходжа Насреддин и его робо-ослик Меркеп-Бот прибывают в Великую Мечеть...",
+                title = "Обложка • Акшехир",
+                drawableResId = R.drawable.img_cover_mosque,
+                narrativeText = "Под звёздным куполом древнего Акшехира мудрец Ходжа Насреддин прибывает в Великую Мечеть со своим верным осликом.",
                 sequenceNumber = 1,
-                language = AppLanguage.RUSSIAN
+                language = AppLanguage.RUSSIAN,
+                coverTitle = storyTitle,
+                coverSubtitle = AppStrings.parchmentEpisodeBadge(AppLanguage.RUSSIAN, 1)
             ),
             ComicPage(
                 id = "builtin_ru_page_1",
                 title = "Часть I • «Не знаем»",
                 drawableResId = R.drawable.img_comic_ru_p1_v2,
-                narrativeText = "Однажды Ходжа Насреддин взошел на кафедру в Акшехире и обратился к верующим: «Знаете ли вы, что я сейчас вам скажу?» – «Нет, не знаем», – ответили верующие. Тогда Ходжа сказал: «Если не знаете, то зачем мне вам что-то говорить?» После чего он сошел с кафедры и отправился в далекий путь.",
+                narrativeText = "Однажды Ходжа Насреддин взошёл на кафедру в Акшехире и обратился к верующим: «Знаете ли вы, что я сейчас вам скажу?» – «Нет, не знаем», – ответили верующие. Тогда Ходжа сказал: «Если не знаете, то зачем мне вам что-то говорить?» После чего он сошёл с кафедры и отправился в далекий путь.",
                 dialogueText = "Ходжа: «Знаете ли вы, что я вам скажу?»\nПрихожане: «Нет, не знаем!»\nХоджа: «Если не знаете, зачем мне говорить?»",
                 sequenceNumber = 2,
                 language = AppLanguage.RUSSIAN
@@ -409,7 +442,7 @@ class ComicRepository(private val context: Context) {
                 id = "builtin_ru_page_2",
                 title = "Часть II • «Знаем»",
                 drawableResId = R.drawable.img_comic_ru_p2_v2,
-                narrativeText = "Прошло время, и Ходжа снова взошел на кафедру и задал правоверным тот же вопрос. «Знаем», – ответили Насреддину верующие. «Ну, если знаете, значит, мне нет надобности и говорить», – сказал Ходжа и опять удалился. Правоверные поразились словам Ходжи, но решили, что когда он снова задаст свой удивительный вопрос, то они ответят: «Одни из нас знают, а другие – нет».",
+                narrativeText = "Прошло время, и Ходжа снова взошёл на кафедру и задал правоверным тот же вопрос. «Знаем», – ответили Насреддину верующие. «Ну, если знаете, значит, мне нет надобности и говорить», – сказал Ходжа и опять удалился. Правоверные поразились словам Ходжи, но решили, что когда он снова задаст свой удивительный вопрос, то они ответят: «Одни из нас знают, а другие – нет».",
                 dialogueText = "Ходжа: «Знаете ли вы, что я вам скажу?»\nПрихожане: «Знаем!»\nХоджа: «Раз знаете, мне незачем говорить!»\n(Шепот в толпе): «В следующий раз ответим: одни знают, другие нет!»",
                 sequenceNumber = 3,
                 language = AppLanguage.RUSSIAN
@@ -418,7 +451,7 @@ class ComicRepository(private val context: Context) {
                 id = "builtin_ru_page_3",
                 title = "Часть III • «Великий финал»",
                 drawableResId = R.drawable.img_comic_ru_p3_v2,
-                narrativeText = "И вновь Ходжа взошел на кафедру, и в третий раз обратился к народу со своим вопросом. «Одни из нас знают, другие нет», – был ему ответ. И тогда Ходжа, лицо которого при этом было совершенно серьезным, воскликнул: «Прекрасно! Раз так, тогда пусть те из вас, кто знает, расскажут тем, которые не знают».",
+                narrativeText = "И вновь Ходжа взошёл на кафедру, и в третий раз обратился к народу со своим вопросом. «Одни из нас знают, другие нет», – был ему ответ. И тогда Ходжа, лицо которого при этом было совершенно серьёзным, воскликнул: «Прекрасно! Раз так, тогда пусть те из вас, кто знает, расскажут тем, которые не знают».",
                 dialogueText = "Ходжа: «Знаете ли вы, что я вам скажу?»\nПрихожане: «Одни из нас знают, а другие нет!»\nХоджа: «Прекрасно! Пусть те, кто знает, расскажут тем, кто не знает!»",
                 sequenceNumber = 4,
                 language = AppLanguage.RUSSIAN
@@ -427,30 +460,35 @@ class ComicRepository(private val context: Context) {
 
         return ComicBook(
             id = BUILT_IN_RU_ID,
-            title = "1. Проповедь в мечети",
+            title = storyTitle,
             subtitle = "Ходжа Насреддин",
-            description = "Классический суфийский анекдот о мудром Ходже Насреддине. Полноэкранный иллюстрированный комикс с оригинальными репликами и диалогами на русском языке.",
-            coverDrawableResId = R.drawable.img_comic_ru_cover,
+            description = "Классический суфийский анекдот о мудром Ходже Насреддине. Иллюстрированный комикс и полная притча на пергаменте на русском языке.",
+            coverDrawableResId = R.drawable.img_cover_mosque,
             pages = pages,
             isBuiltIn = true,
             language = AppLanguage.RUSSIAN,
             isFree = true,
             storyNumber = 1,
-            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
+            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+            fullStoryText = pages.drop(1).mapNotNull { it.narrativeText }.joinToString("\n\n"),
+            moralText = "Истинная мудрость рождается в диалоге: знающие делятся светом понимания с теми, кто лишь начинает путь."
         )
     }
 
     fun getBuiltInSpanishComic(): ComicBook {
         val savedProgress = prefs.getInt("progress_$BUILT_IN_ES_ID", 0)
+        val storyTitle = "1. El sermón en la mezquita"
 
         val pages = listOf(
             ComicPage(
                 id = "builtin_es_cover",
-                title = "Portada • Neo-Akşehir",
-                drawableResId = R.drawable.img_comic_es_cover,
-                narrativeText = "En la metrópoli cibernética de Neo-Akşehir, los minaretes se elevan hacia el cielo estrellado. El sabio Nasreddin Hodja y su fiel burro robótico Merkep-Bot llegan a la Gran Mezquita...",
+                title = "Portada • Akşehir",
+                drawableResId = R.drawable.img_cover_mosque,
+                narrativeText = "Bajo la bóveda estrellada de Akşehir, el sabio Nasreddin Hodja llega a la Gran Mezquita junto a su fiel borrico.",
                 sequenceNumber = 1,
-                language = AppLanguage.SPANISH
+                language = AppLanguage.SPANISH,
+                coverTitle = storyTitle,
+                coverSubtitle = AppStrings.parchmentEpisodeBadge(AppLanguage.SPANISH, 1)
             ),
             ComicPage(
                 id = "builtin_es_page_1",
@@ -483,30 +521,35 @@ class ComicRepository(private val context: Context) {
 
         return ComicBook(
             id = BUILT_IN_ES_ID,
-            title = "1. El sermón en la mezquita",
+            title = storyTitle,
             subtitle = "Nasreddin Hodja",
-            description = "Anécdota sufí clásica del sabio Nasreddin Hodja. Cómic ilustrado a pantalla completa con viñetas y diálogos en español.",
-            coverDrawableResId = R.drawable.img_comic_es_cover,
+            description = "Anécdota sufí clásica del sabio Nasreddin Hodja. Cómic ilustrado y relato completo en pergamino en español.",
+            coverDrawableResId = R.drawable.img_cover_mosque,
             pages = pages,
             isBuiltIn = true,
             language = AppLanguage.SPANISH,
             isFree = true,
             storyNumber = 1,
-            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
+            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+            fullStoryText = pages.drop(1).mapNotNull { it.narrativeText }.joinToString("\n\n"),
+            moralText = "La verdadera sabiduría florece al compartirse: quienes ya conocen la luz del saber deben guiar a quienes aún la buscan."
         )
     }
 
     fun getBuiltInEnglishComic(): ComicBook {
         val savedProgress = prefs.getInt("progress_$BUILT_IN_EN_ID", 0)
+        val storyTitle = "1. The Sermon in the Mosque"
 
         val pages = listOf(
             ComicPage(
                 id = "builtin_en_cover",
-                title = "Cover • Neo-Akşehir",
-                drawableResId = R.drawable.img_comic_en_cover,
-                narrativeText = "In the futuristic city of Neo-Akşehir, the wise Hodja Nasreddin and his robotic donkey Merkep-Bot enter the great mosque...",
+                title = "Cover • Akşehir",
+                drawableResId = R.drawable.img_cover_mosque,
+                narrativeText = "Beneath the starry sky of Akşehir, the wise Hodja Nasreddin arrives at the Grand Mosque beside his faithful donkey.",
                 sequenceNumber = 1,
-                language = AppLanguage.ENGLISH
+                language = AppLanguage.ENGLISH,
+                coverTitle = storyTitle,
+                coverSubtitle = AppStrings.parchmentEpisodeBadge(AppLanguage.ENGLISH, 1)
             ),
             ComicPage(
                 id = "builtin_en_page_1",
@@ -539,16 +582,18 @@ class ComicRepository(private val context: Context) {
 
         return ComicBook(
             id = BUILT_IN_EN_ID,
-            title = "1. The Sermon in the Mosque",
+            title = storyTitle,
             subtitle = "Hodja Nasreddin",
-            description = "The classic wisdom tale of Hodja Nasreddin in Neo-Akşehir. Fullscreen illustrated comic with dialogue panels in English.",
-            coverDrawableResId = R.drawable.img_comic_en_cover,
+            description = "The classic Sufi wisdom tale of Hodja Nasreddin. Illustrated comic panels paired with the full parchment story in English.",
+            coverDrawableResId = R.drawable.img_cover_mosque,
             pages = pages,
             isBuiltIn = true,
             language = AppLanguage.ENGLISH,
             isFree = true,
             storyNumber = 1,
-            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
+            lastReadPageIndex = savedProgress.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+            fullStoryText = pages.drop(1).mapNotNull { it.narrativeText }.joinToString("\n\n"),
+            moralText = "True wisdom grows only when shared: those who already understand must pass their lantern to those who have yet to learn."
         )
     }
 

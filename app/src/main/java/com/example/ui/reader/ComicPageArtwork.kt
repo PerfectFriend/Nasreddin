@@ -21,6 +21,8 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import com.example.model.ComicPage
 import com.example.model.PanelCrop
+import com.example.ui.components.CoverCartoucheTitleOverlay
+import com.example.ui.components.EasternPanelTrimOverlay
 import kotlin.math.roundToInt
 
 /**
@@ -117,7 +119,8 @@ internal object ComicPanelCropCache {
 
 /**
  * Unified comic artwork renderer used by the fullscreen reader, thumbnail filmstrip, and sequence sheet.
- * Automatically renders cropped single-panel regions when [ComicPage.panelCrop] is provided, and
+ * Automatically renders cropped single-panel regions when [ComicPage.panelCrop] is provided,
+ * stamps localized cartouche titles onto dedicated cover pages ([ComicPage.coverTitle]), and
  * optionally overlays localized dynamic [SpeechBubble] balloons when [showBubbles] is enabled.
  */
 @Composable
@@ -181,6 +184,22 @@ fun ComicPageArtwork(
                 contentDescription = page.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale
+            )
+        }
+
+        if (!page.coverTitle.isNullOrBlank()) {
+            CoverCartoucheTitleOverlay(
+                title = page.coverTitle,
+                subtitle = page.coverSubtitle,
+                imageAspectRatio = resolvedAspectRatio,
+                isCropScale = contentScale == ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (resId != null && contentScale != ContentScale.Crop) {
+            EasternPanelTrimOverlay(
+                imageAspectRatio = resolvedAspectRatio,
+                isCropScale = false,
+                modifier = Modifier.fillMaxSize()
             )
         }
 

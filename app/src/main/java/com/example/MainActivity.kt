@@ -20,6 +20,7 @@ import com.example.ui.ComicViewModel
 import com.example.ui.library.ComicLibraryScreen
 import com.example.ui.monetization.AdSlotOverlayDialog
 import com.example.ui.monetization.PaywallDialog
+import com.example.ui.parchment.ParchmentStoryDialog
 import com.example.ui.reader.ComicLoreSheet
 import com.example.ui.reader.ComicReaderScreen
 import com.example.ui.sequence.SequenceManagerSheet
@@ -189,6 +190,9 @@ fun ComicAppContent(viewModel: ComicViewModel) {
             onOpenComic = { comic ->
                 viewModel.openComic(comic)
             },
+            onOpenParchment = { comic ->
+                viewModel.openParchment(comic)
+            },
             onManageSequence = { comic ->
                 sequenceModalComic = comic
             },
@@ -219,6 +223,16 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 }
             )
         }
+    }
+
+    // Illuminated Parchment Story Scroll opened from Library
+    val parchmentComic = uiState.parchmentComic
+    if (parchmentComic != null) {
+        ParchmentStoryDialog(
+            comic = parchmentComic,
+            currentLanguage = uiState.currentLanguage,
+            onDismiss = { viewModel.closeParchment() }
+        )
     }
 
     // Hybrid Paywall Modal Dialog

@@ -52,7 +52,8 @@ data class UiState(
     val currentLanguage: AppLanguage = AppLanguage.ENGLISH,
     val showSpeechBubbles: Boolean = true,
     val isLoading: Boolean = false,
-    val snackbarMessage: String? = null
+    val snackbarMessage: String? = null,
+    val parchmentComic: ComicBook? = null
 ) {
     fun isComicUnlocked(comic: ComicBook): Boolean {
         return comic.isFree ||
@@ -103,7 +104,16 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
                     val updatedActive = state.activeComic?.let { active ->
                         list.find { it.id == active.id } ?: active
                     }
-                    state.copy(comics = list, activeComic = updatedActive)
+                    val updatedParchment = state.parchmentComic?.let { p ->
+                        list.find { it.storyNumber == p.storyNumber && it.isBuiltIn == p.isBuiltIn }
+                            ?: list.find { it.id == p.id }
+                            ?: p
+                    }
+                    state.copy(
+                        comics = list,
+                        activeComic = updatedActive,
+                        parchmentComic = updatedParchment
+                    )
                 }
             }
         }
@@ -326,6 +336,18 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleLoreSheet(open: Boolean) {
         _uiState.update { it.copy(isLoreSheetOpen = open) }
+    }
+
+    fun openParchment(comic: ComicBook) {
+        if (!repository.isComicUnlocked(comic)) {
+            _uiState.update { it.copy(pendingLockedComic = comic, isPaywallOpen = true) }
+            return
+        }
+        _uiState.update { it.copy(parchmentComic = comic) }
+    }
+
+    fun closeParchment() {
+        _uiState.update { it.copy(parchmentComic = null) }
     }
 
     fun toggleThumbnailDrawer(open: Boolean) {

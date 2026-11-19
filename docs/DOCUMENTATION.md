@@ -16,12 +16,14 @@
 
 ## 2. Core Engineering Rules & Invariants
 
-1. **Minimum 4 Pages per Story (`pages.size >= 4`):**
-   - **Episode #1:** 4 dedicated full-page illustrations per language.
-   - **Episodes #2–#10:** Localized 2×2 comic sheets dynamically cropped into **4 individual fullscreen panel pages** (`PanelCrop` fractional rects) using `BitmapRegionDecoder` + two-pass dimension decoding + thread-safe `LruCache(32)`.
-   - **Episodes #11–#100:** Powered by 3 theme-matched text-free universal templates (`img_universal_hodja_template` bazaar, `img_universal_hodja_teahouse` chaikhana/courtroom, `img_universal_hodja_night` desert/caravanserai) paired with dynamic localized `SpeechBubble` overlays (`StoryBubbleComposer` + `ComicBubbleOverlay` with adaptive typography) and localized `RU / ES / EN` morals stored in `nasreddin_anecdotes_vault.json`.
+1. **Minimum 4 Pages per Story (`pages.size >= 4`, 5 Pages on Episodes #2–#100):**
+   - **Episode #1:** Dedicated ornate Mosque cover (`img_cover_mosque`) with localized cartouche title plus 3 full-page comic scenes (`4` pages total).
+   - **Episodes #2–#10:** Localized Eastern cover (`img_cover_{bazaar,teahouse,night}`) prepended as Page 1 before **4 individual fullscreen panel pages** cropped via `PanelCrop` (`BitmapRegionDecoder` + `LruCache(32)`), giving `5` pages per story.
+   - **Episodes #11–#100:** Localized Eastern cover prepended as Page 1 before 4 panel pages over 3 theme-matched text-free universal templates (`bazaar`, `teahouse`, `night`), paired with dynamic localized `SpeechBubble` overlays (`StoryBubbleComposer` + `ComicBubbleOverlay` with adaptive typography) and localized `RU / ES / EN` morals stored in `nasreddin_anecdotes_vault.json`.
+   - **Eastern Ornament Framing & Dynamic Cartouche Titles:** All comic plates and launch art (`img_splash_minaret`) are framed in lapis-turquoise-gold Eastern ornaments. `LocalizedComicCover` dynamically renders each story's title in `Playfair Display` inside its cover cartouche according to the selected `AppLanguage`.
+   - **Parchment Story Viewer (`ParchmentStoryDialog`):** Accessible from the Library cards, featured banner, and Reader HUD (`reader_parchment_button`), rendering the complete localized narrative with drop caps and moral plaque on an Eastern parchment scroll using locally bundled Cyrillic/Latin Google Fonts (`Playfair Display`, `Cormorant Garamond`, `Lora`).
 2. **Strict Single-Language Catalog Filtering:**
-   - `ComicRepository.loadAllComics()` exposes only built-in stories matching the active `AppLanguage` (plus user-imported SAF folders whose labels also localize via `AppStrings`). Switching languages reloads localized titles, descriptions, drawables, bubbles, and reader strings immediately.
+   - `ComicRepository.loadAllComics()` exposes only built-in stories matching the active `AppLanguage` (plus user-imported SAF folders whose labels also localize via `AppStrings`). Switching languages reloads localized titles, cover cartouches, parchment stories, descriptions, drawables, bubbles, and reader strings immediately.
 3. **Hybrid Monetization Model:**
    - **Stories 1–10:** 100% Free, ad-free.
    - **Stories 11–100:**
@@ -49,8 +51,12 @@ app/src/main/java/com/example/
 ├── data/
 │   └── ComicRepository.kt              # Single Source of Truth (vault JSON, prefs, unlocks, progress)
 ├── ui/
-│   ├── ComicViewModel.kt               # UDF state holder (StateFlow<UiState>) & ad-frequency logic
-│   ├── splash/SplashScreen.kt          # Hero minaret launch screen & instant RU/ES/EN toggle
+│   ├── ComicViewModel.kt               # UDF state holder (StateFlow<UiState>), parchment & unlock flows
+│   ├── components/
+│   │   └── LocalizedComicCover.kt      # 3:4 Eastern cover renderer, cartouche typography & filigree trim
+│   ├── parchment/
+│   │   └── ParchmentStoryDialog.kt     # Illuminated parchment scroll reader with drop cap & moral card
+│   ├── splash/SplashScreen.kt          # Ornate minaret launch screen & instant RU/ES/EN toggle
 │   ├── library/
 │   │   ├── ComicLibraryScreen.kt       # 100-story catalog host, LazyColumn layout & language scrim
 │   │   ├── LibraryHeaderAndBanners.kt  # Top bar, Hybrid Monetization banner, SAF import cards, wisdom card
@@ -59,14 +65,14 @@ app/src/main/java/com/example/
 │   │   └── LibraryFilter.kt            # Tier/atmosphere filter model & pure search predicate
 │   ├── reader/
 │   │   ├── ComicReaderScreen.kt        # Dual-mode reader, direct story switcher, overlays, BackHandler
-│   │   ├── ComicPageArtwork.kt         # BitmapRegionDecoder panel cropper & bounded LruCache(32)
+│   │   ├── ComicPageArtwork.kt         # BitmapRegionDecoder panel cropper, cartouche titles & LruCache(32)
 │   │   ├── ComicBubbleOverlay.kt       # Dynamic localized speech/narration balloons fitted to artwork rect
 │   │   ├── ZoomableComicImage.kt       # Page-keyed pinch-to-zoom, double-tap & pan gestures
 │   │   ├── ThumbnailFilmstripDrawer.kt # Auto-synced bottom thumbnail strip
-│   │   └── ComicLoreSheet.kt           # ModalBottomSheet for narrative, dialogue & wisdom card
+│   │   └── ComicLoreSheet.kt           # Delegates reader story view to ParchmentStoryDialog
 │   ├── sequence/SequenceManagerSheet.kt# Page reordering, natural/reverse sort & pruning
 │   ├── monetization/PaywallDialog.kt   # Hybrid Paywall & Rewarded/Interstitial Ad slot overlays
-│   └── theme/                          # Material 3 high-contrast Midnight Gold & Cyan palette
+│   └── theme/                          # Material 3 palette + bundled TTF serif Typography
 └── util/
     ├── AppStrings.kt                   # Centralized RU / ES / EN localization dictionary
     ├── StoryBubbleComposer.kt          # Splits parables into 4 dynamic panel speech/narration beats
@@ -91,8 +97,8 @@ gradle :app:testDebugUnitTest
 > **Note:** Always invoke `gradle` directly (`./gradlew` wrapper is not used in this container).
 
 ### APK Size vs Repo Media Separation
-- Android bundled assets live in `app/src/main/res/drawable/` (44 `.webp` panels/covers compressed from 50 MB to **14 MB**, plus 2 adaptive icon XML layers) and `app/src/main/assets/`.
-- Library thumbnails and featured covers load through Coil `ImageRequest` downsampling (`240×320` and `900×660` px) to avoid decoding full raster sheets in the catalog heap.
+- Android bundled assets live in `app/src/main/res/drawable/` (ornate Eastern `.webp` splash art, 4 dedicated story cover templates, framed comic plates, and 2 adaptive icon XML layers), `app/src/main/res/font/` (`playfair_display.ttf`, `cormorant_garamond.ttf`, `lora.ttf`), and `app/src/main/assets/`.
+- Library thumbnails and featured covers load through Coil `ImageRequest` downsampling (`240×320` and `480×640` px) with `LocalizedComicCover` overlaying the active language title cleanly inside the blank cartouche.
 - GitHub documentation media (`banner_top.jpg`, `banner_bottom.jpg`) lives exclusively in `docs/images/` so documentation artwork never inflates the compiled APK.
 
 ---
@@ -102,6 +108,6 @@ gradle :app:testDebugUnitTest
 | Milestone | Scope | Technical Approach |
 | :--- | :--- | :--- |
 | **v1.0 (Baseline)** | 25 anecdotes (`>= 4` pages each), `RU/ES/EN`, SAF importer, Hybrid Paywall UX | Bundled vault JSON + 2×2 panel region cropping + local state |
-| **v1.1 (100 Stories Ready — Audio Next)** | 100 stories + Library Search/Filter + WebP & Coil optimization + 1h Eastern soundtrack | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + on-canvas dynamic text overlay + `.webp` assets (`14 MB`) + trimmed unused APK deps; next: lightweight `AudioFocus`-safe soundtrack module & RC1 audit |
+| **v1.1 (100 Stories Ready — Audio Next)** | 100 stories + Library Search/Filter + WebP & Coil optimization + 1h Eastern soundtrack | 3 thematic blank speech-bubble sheets (`bazaar`, `teahouse`, `night`) + 4 Eastern story covers + dynamic localized cartouches & parchment story dialog + `.webp` assets (`15.1 MB`); next: lightweight `AudioFocus`-safe soundtrack module & RC1 audit |
 | **v1.2** | Top-10 global languages + Live Billing & Ads SDKs | Google Play Billing / RuStore BillingClient + AdMob / Yandex Mobile Ads wiring at `PaywallDialog` / `ComicViewModel` seams |
 | **v2.0** | 500–1,200+ episodes via seasonal episodic drops | Cloud CDN / Play Feature/Asset packs + automated 20s cliffhanger video teaser funnel |
