@@ -160,7 +160,11 @@ class ExampleRobolectricTest {
             R.drawable.img_cover_mosque,
             R.drawable.img_cover_bazaar,
             R.drawable.img_cover_teahouse,
-            R.drawable.img_cover_night
+            R.drawable.img_cover_night,
+            R.drawable.img_cover_court,
+            R.drawable.img_cover_caravan,
+            R.drawable.img_cover_lake,
+            R.drawable.img_cover_garden
         )
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
@@ -333,14 +337,18 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `stories 11 to 100 share 3 thematic cover templates and 3 panel sheets across RU ES EN with localized cartouche titles`() {
+    fun `stories 11 to 50 have unique bespoke sheets, stories 51 to 100 share universal sheets, and all 90 rotate across 7 covers`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
-        val expectedUniversalCovers = setOf(
+        val expectedCovers = setOf(
             R.drawable.img_cover_bazaar,
             R.drawable.img_cover_teahouse,
-            R.drawable.img_cover_night
+            R.drawable.img_cover_night,
+            R.drawable.img_cover_court,
+            R.drawable.img_cover_caravan,
+            R.drawable.img_cover_lake,
+            R.drawable.img_cover_garden
         )
         val expectedUniversalDrawables = setOf(
             R.drawable.img_universal_hodja_template,
@@ -356,14 +364,29 @@ class ExampleRobolectricTest {
 
             val usedCovers = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
             assertEquals(
-                "Stories 11..100 ($lang) should utilize all 3 thematic Eastern covers",
-                expectedUniversalCovers,
+                "Stories 11..100 ($lang) should utilize all 7 non-mosque Eastern covers",
+                expectedCovers,
                 usedCovers
             )
 
+            // Stories 11..50 must each point to their own completely unique bespoke sheet drawable
+            val bespokeStories = premiumStories.filter { it.storyNumber in 11..50 }
+            assertEquals(40, bespokeStories.size)
+            val bespokeDrawables = bespokeStories.map { story ->
+                val panelRes = story.pages.drop(1).mapNotNull { it.drawableResId }.toSet()
+                assertEquals(1, panelRes.size)
+                panelRes.first()
+            }
+            assertEquals(
+                "Stories 11..50 must each have a distinct unique bespoke artwork drawable",
+                40,
+                bespokeDrawables.toSet().size
+            )
+            assertTrue(bespokeDrawables.none { it in expectedUniversalDrawables })
+
             val firstBubbleTexts = mutableListOf<String>()
             for (story in premiumStories) {
-                assertTrue(story.coverDrawableResId in expectedUniversalCovers)
+                assertTrue(story.coverDrawableResId in expectedCovers)
                 assertEquals(5, story.pages.size)
                 assertEquals(story.coverDrawableResId, story.pages[0].drawableResId)
                 assertEquals(story.title, story.pages[0].coverTitle)
@@ -373,7 +396,11 @@ class ExampleRobolectricTest {
                 assertEquals(4, panelPages.mapNotNull { it.panelCrop }.toSet().size)
 
                 for (page in panelPages) {
-                    assertTrue(page.drawableResId in expectedUniversalDrawables)
+                    if (story.storyNumber <= 50) {
+                        assertEquals(repository.resolveStoryBespokeSheetDrawable(story.storyNumber), page.drawableResId)
+                    } else {
+                        assertTrue(page.drawableResId in expectedUniversalDrawables)
+                    }
                     assertTrue(
                         "Story ${story.storyNumber} ($lang) page ${page.sequenceNumber} must have dynamic bubbles",
                         page.bubbles.isNotEmpty()
@@ -389,7 +416,7 @@ class ExampleRobolectricTest {
             collectTitlesByStory[lang] = firstBubbleTexts
         }
 
-        // Same 3 universal artwork sheets, yet completely distinct localized bubble text per language
+        // Same language-agnostic visual sheets, yet completely distinct localized bubble text per language
         assertNotEquals(collectTitlesByStory[AppLanguage.RUSSIAN], collectTitlesByStory[AppLanguage.ENGLISH])
         assertNotEquals(collectTitlesByStory[AppLanguage.SPANISH], collectTitlesByStory[AppLanguage.ENGLISH])
     }

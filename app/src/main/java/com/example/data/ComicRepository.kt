@@ -191,7 +191,8 @@ class ComicRepository(private val context: Context) {
                 val normalizedTheme = resolveNormalizedTheme(rawTheme, seq)
                 val coverDrawable = resolveStoryCoverDrawable(normalizedTheme, seq)
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
-                val universalTemplateDrawable = resolveUniversalTemplateDrawable(normalizedTheme, seq)
+                val bespokeSheetDrawable = resolveStoryBespokeSheetDrawable(seq)
+                val panelSheetDrawable = bespokeSheetDrawable ?: resolveUniversalTemplateDrawable(normalizedTheme, seq)
 
                 val coverPage = ComicPage(
                     id = "${id}_cover",
@@ -226,7 +227,7 @@ class ComicRepository(private val context: Context) {
                         )
                     }
                 } else {
-                    // Universal v1.1 template architecture: 3 text-free 2x2 sheets (bazaar, teahouse, night)
+                    // Bespoke text-free 2x2 sheets (#11..#50) and universal templates (#51..#100)
                     // serve all languages while StoryBubbleComposer renders localized dialogue balloons dynamically.
                     val universalQuadrantCrops = listOf(
                         PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f),
@@ -245,7 +246,7 @@ class ComicRepository(private val context: Context) {
                         ComicPage(
                             id = "${id}_p$step",
                             title = "$title • ${AppStrings.panelStepLabel(lang, step)}",
-                            drawableResId = universalTemplateDrawable,
+                            drawableResId = panelSheetDrawable,
                             narrativeText = if (step == 4 && moral.isNotEmpty()) moral else text,
                             dialogueText = moral.takeIf { it.isNotEmpty() },
                             sequenceNumber = step + 1,
@@ -305,6 +306,56 @@ class ComicRepository(private val context: Context) {
     }
 
     /**
+     * Resolves a story-specific text-free 2x2 illustrated plate for stories #11..#50 so each
+     * episode depicts its own plot beats while retaining localized RU/ES/EN dialogue bubbles.
+     */
+    internal fun resolveStoryBespokeSheetDrawable(sequence: Int): Int? {
+        return when (sequence) {
+            11 -> R.drawable.img_story_011
+            12 -> R.drawable.img_story_012
+            13 -> R.drawable.img_story_013
+            14 -> R.drawable.img_story_014
+            15 -> R.drawable.img_story_015
+            16 -> R.drawable.img_story_016
+            17 -> R.drawable.img_story_017
+            18 -> R.drawable.img_story_018
+            19 -> R.drawable.img_story_019
+            20 -> R.drawable.img_story_020
+            21 -> R.drawable.img_story_021
+            22 -> R.drawable.img_story_022
+            23 -> R.drawable.img_story_023
+            24 -> R.drawable.img_story_024
+            25 -> R.drawable.img_story_025
+            26 -> R.drawable.img_story_026
+            27 -> R.drawable.img_story_027
+            28 -> R.drawable.img_story_028
+            29 -> R.drawable.img_story_029
+            30 -> R.drawable.img_story_030
+            31 -> R.drawable.img_story_031
+            32 -> R.drawable.img_story_032
+            33 -> R.drawable.img_story_033
+            34 -> R.drawable.img_story_034
+            35 -> R.drawable.img_story_035
+            36 -> R.drawable.img_story_036
+            37 -> R.drawable.img_story_037
+            38 -> R.drawable.img_story_038
+            39 -> R.drawable.img_story_039
+            40 -> R.drawable.img_story_040
+            41 -> R.drawable.img_story_041
+            42 -> R.drawable.img_story_042
+            43 -> R.drawable.img_story_043
+            44 -> R.drawable.img_story_044
+            45 -> R.drawable.img_story_045
+            46 -> R.drawable.img_story_046
+            47 -> R.drawable.img_story_047
+            48 -> R.drawable.img_story_048
+            49 -> R.drawable.img_story_049
+            50 -> R.drawable.img_story_050
+            else -> null
+        }
+    }
+
+    /**
      * Selects the universal 2x2 text-free sheet matching a story's setting ("bazaar", "teahouse",
      * or "night") and cycles evenly when no explicit theme tag is provided in JSON.
      */
@@ -318,15 +369,27 @@ class ComicRepository(private val context: Context) {
 
     /**
      * Resolves an ornate Eastern-framed cover template with a blank title cartouche
-     * matching each story's atmosphere ("mosque" for Story #1, otherwise "bazaar",
-     * "teahouse", or "night").
+     * matching each story's atmosphere across 8 curated visual scenes ("mosque" for Story #1,
+     * plus theme-matched courtroom, caravan, lakeside, garden, bazaar, teahouse, and night plates).
      */
     internal fun resolveStoryCoverDrawable(theme: String?, sequence: Int): Int {
         if (sequence == 1) return R.drawable.img_cover_mosque
         return when (resolveNormalizedTheme(theme, sequence)) {
-            "teahouse" -> R.drawable.img_cover_teahouse
-            "night" -> R.drawable.img_cover_night
-            else -> R.drawable.img_cover_bazaar
+            "teahouse" -> when (sequence.mod(3)) {
+                0 -> R.drawable.img_cover_garden
+                1 -> R.drawable.img_cover_court
+                else -> R.drawable.img_cover_teahouse
+            }
+            "night" -> when (sequence.mod(3)) {
+                0 -> R.drawable.img_cover_lake
+                1 -> R.drawable.img_cover_night
+                else -> R.drawable.img_cover_caravan
+            }
+            else -> when (sequence.mod(3)) {
+                0 -> R.drawable.img_cover_caravan
+                1 -> R.drawable.img_cover_bazaar
+                else -> R.drawable.img_cover_court
+            }
         }
     }
 
