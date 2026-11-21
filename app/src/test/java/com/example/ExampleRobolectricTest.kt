@@ -61,20 +61,20 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `vault loads 100 anecdotes with 10 free and 90 premium`() {
+    fun `vault loads 50 anecdotes with 10 free and 40 premium`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         val comics = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(100, comics.size)
+        assertEquals(50, comics.size)
 
         // Verify first 10 are free
         val freeStories = comics.filter { it.isFree }
         assertEquals(10, freeStories.size)
 
-        // Verify remaining 90 are premium
+        // Verify remaining 40 are premium
         val premiumStories = comics.filter { !it.isFree }
-        assertEquals(90, premiumStories.size)
+        assertEquals(40, premiumStories.size)
     }
 
     @Test
@@ -89,26 +89,26 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `strict language filtering applies across all 100 stories`() {
+    fun `strict language filtering applies across all 50 stories`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         // Russian selection
         repository.setLanguage(AppLanguage.RUSSIAN)
         val ruStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(100, ruStories.size)
+        assertEquals(50, ruStories.size)
         assertTrue(ruStories.all { it.language == AppLanguage.RUSSIAN })
 
         // Spanish selection
         repository.setLanguage(AppLanguage.SPANISH)
         val esStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(100, esStories.size)
+        assertEquals(50, esStories.size)
         assertTrue(esStories.all { it.language == AppLanguage.SPANISH })
 
         // English selection
         repository.setLanguage(AppLanguage.ENGLISH)
         val enStories = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(100, enStories.size)
+        assertEquals(50, enStories.size)
         assertTrue(enStories.all { it.language == AppLanguage.ENGLISH })
     }
 
@@ -153,7 +153,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `all 100 stories have at least 4 pages and episodes 2 to 10 include cover plus 4 panel crops across RU ES and EN`() {
+    fun `all 50 stories have at least 4 pages and episodes 2 to 10 include cover plus 4 panel crops across RU ES and EN`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
         val themedCovers = setOf(
@@ -170,7 +170,7 @@ class ExampleRobolectricTest {
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val allBuiltIn = repository.comics.value.filter { it.isBuiltIn }
-            assertEquals(100, allBuiltIn.size)
+            assertEquals(50, allBuiltIn.size)
 
             // Every story must strictly have >= 4 pages
             for (story in allBuiltIn) {
@@ -329,15 +329,15 @@ class ExampleRobolectricTest {
 
         val repository = ComicRepository(context)
 
-        // Must fall back to English default and still serve all 100 built-in stories safely
+        // Must fall back to English default and still serve all 50 built-in stories safely
         assertEquals(AppLanguage.ENGLISH, repository.currentLanguage.value)
         val builtIn = repository.comics.value.filter { it.isBuiltIn }
-        assertEquals(100, builtIn.size)
+        assertEquals(50, builtIn.size)
         assertEquals(0, repository.comics.value.count { !it.isBuiltIn })
     }
 
     @Test
-    fun `stories 11 to 50 have unique bespoke sheets, stories 51 to 100 share universal sheets, and all 90 rotate across 7 covers`() {
+    fun `all 40 premium stories 11 to 50 have unique bespoke sheets, rotate across 7 covers, and localize bubbles`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
@@ -350,29 +350,22 @@ class ExampleRobolectricTest {
             R.drawable.img_cover_lake,
             R.drawable.img_cover_garden
         )
-        val expectedUniversalDrawables = setOf(
-            R.drawable.img_universal_hodja_template,
-            R.drawable.img_universal_hodja_teahouse,
-            R.drawable.img_universal_hodja_night
-        )
         val collectTitlesByStory = mutableMapOf<AppLanguage, List<String>>()
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val premiumStories = repository.comics.value.filter { it.isBuiltIn && it.storyNumber >= 11 }
-            assertEquals(90, premiumStories.size)
+            assertEquals(40, premiumStories.size)
 
             val usedCovers = premiumStories.mapNotNull { it.coverDrawableResId }.toSet()
             assertEquals(
-                "Stories 11..100 ($lang) should utilize all 7 non-mosque Eastern covers",
+                "Stories 11..50 ($lang) should utilize all 7 non-mosque Eastern covers",
                 expectedCovers,
                 usedCovers
             )
 
-            // Stories 11..50 must each point to their own completely unique bespoke sheet drawable
-            val bespokeStories = premiumStories.filter { it.storyNumber in 11..50 }
-            assertEquals(40, bespokeStories.size)
-            val bespokeDrawables = bespokeStories.map { story ->
+            // Every story #11..#50 must point to its own completely unique bespoke sheet drawable
+            val bespokeDrawables = premiumStories.map { story ->
                 val panelRes = story.pages.drop(1).mapNotNull { it.drawableResId }.toSet()
                 assertEquals(1, panelRes.size)
                 panelRes.first()
@@ -382,7 +375,6 @@ class ExampleRobolectricTest {
                 40,
                 bespokeDrawables.toSet().size
             )
-            assertTrue(bespokeDrawables.none { it in expectedUniversalDrawables })
 
             val firstBubbleTexts = mutableListOf<String>()
             for (story in premiumStories) {
@@ -391,16 +383,15 @@ class ExampleRobolectricTest {
                 assertEquals(story.coverDrawableResId, story.pages[0].drawableResId)
                 assertEquals(story.title, story.pages[0].coverTitle)
                 assertTrue(story.fullStoryText.isNotBlank())
+                assertTrue(story.moralText.isNotBlank())
 
                 val panelPages = story.pages.drop(1)
                 assertEquals(4, panelPages.mapNotNull { it.panelCrop }.toSet().size)
 
+                val expectedSheet = repository.resolveStoryBespokeSheetDrawable(story.storyNumber)
+                assertNotNull("Story ${story.storyNumber} must map to a bespoke sheet", expectedSheet)
                 for (page in panelPages) {
-                    if (story.storyNumber <= 50) {
-                        assertEquals(repository.resolveStoryBespokeSheetDrawable(story.storyNumber), page.drawableResId)
-                    } else {
-                        assertTrue(page.drawableResId in expectedUniversalDrawables)
-                    }
+                    assertEquals(expectedSheet, page.drawableResId)
                     assertTrue(
                         "Story ${story.storyNumber} ($lang) page ${page.sequenceNumber} must have dynamic bubbles",
                         page.bubbles.isNotEmpty()
@@ -547,45 +538,42 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `new teahouse and night templates decode panels cleanly and ad batches unlock up to story 100`() {
+    fun `bespoke sheets decode all 4 quadrant panels cleanly and ad batches cap at story 50`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
-        val crop = PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f)
-
-        val teahousePanel = ComicPanelCropCache.getOrDecodePanel(
-            context.resources,
-            R.drawable.img_universal_hodja_teahouse,
-            crop
+        val quadrantCrops = listOf(
+            PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f),
+            PanelCrop(left = 0.510f, top = 0.018f, right = 0.980f, bottom = 0.490f),
+            PanelCrop(left = 0.020f, top = 0.510f, right = 0.490f, bottom = 0.982f),
+            PanelCrop(left = 0.510f, top = 0.510f, right = 0.980f, bottom = 0.982f)
         )
-        val nightPanel = ComicPanelCropCache.getOrDecodePanel(
-            context.resources,
-            R.drawable.img_universal_hodja_night,
-            crop
-        )
-        assertNotNull(teahousePanel)
-        assertNotNull(nightPanel)
-        assertTrue(teahousePanel!!.width > 0 && teahousePanel.height > 0)
-        assertTrue(nightPanel!!.width > 0 && nightPanel.height > 0)
 
-        // Verify explicit theme mapping and cyclic fallback when theme is absent
-        assertEquals(R.drawable.img_universal_hodja_teahouse, repository.resolveUniversalTemplateDrawable("teahouse", 99))
-        assertEquals(R.drawable.img_universal_hodja_night, repository.resolveUniversalTemplateDrawable("night", 99))
-        assertEquals(R.drawable.img_universal_hodja_template, repository.resolveUniversalTemplateDrawable("bazaar", 99))
-        assertEquals(R.drawable.img_universal_hodja_teahouse, repository.resolveUniversalTemplateDrawable(null, 2))
+        for (sheetRes in listOf(R.drawable.img_story_011, R.drawable.img_story_034, R.drawable.img_story_050)) {
+            for (crop in quadrantCrops) {
+                val panel = ComicPanelCropCache.getOrDecodePanel(context.resources, sheetRes, crop)
+                assertNotNull(panel)
+                assertTrue(panel!!.width > 0 && panel.height > 0)
+            }
+        }
 
-        // Ad batches advance sequentially past 50 all the way to 100
+        // Verify all 40 bespoke sheets #11..#50 resolve via map lookup and null outside range
+        val mapped = (11..50).mapNotNull { repository.resolveStoryBespokeSheetDrawable(it) }
+        assertEquals(40, mapped.toSet().size)
+        assertNull(repository.resolveStoryBespokeSheetDrawable(10))
+        assertNull(repository.resolveStoryBespokeSheetDrawable(51))
+
+        // Ad batches advance sequentially from 10 to 50 and cap cleanly at 50
         var unlockedMax = repository.adUnlockedMaxStory.value
         assertEquals(10, unlockedMax)
-        repeat(18) {
+        repeat(8) {
             unlockedMax = repository.unlockNextAdBatch()
         }
-        assertEquals(100, unlockedMax)
-        // Must cap cleanly at catalog max 100
-        assertEquals(100, repository.unlockNextAdBatch())
+        assertEquals(50, unlockedMax)
+        assertEquals(50, repository.unlockNextAdBatch())
     }
 
     @Test
-    fun `library search and tier atmosphere filters locate stories accurately across 100 parables`() {
+    fun `library search and tier atmosphere filters locate stories accurately across 50 parables`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
         repository.setLanguage(AppLanguage.RUSSIAN)
@@ -613,7 +601,7 @@ class ExampleRobolectricTest {
         )
         assertEquals(15, unlocked15.size)
 
-        // Filter: NIGHT matches night-themed episodes including #100
+        // Filter: NIGHT matches night-themed episodes including #50
         val nightStories = filterLibraryComics(
             comics = allComics,
             query = "",
@@ -622,30 +610,30 @@ class ExampleRobolectricTest {
             seriesUnlocked = false,
             adUnlockedMaxStory = 10
         )
-        assertTrue(nightStories.any { it.storyNumber == 100 })
+        assertTrue(nightStories.any { it.storyNumber == 50 })
         assertTrue(nightStories.all { it.themeTag == "night" })
 
-        // Numeric query with '#' prefix resolves exact episode #98
+        // Numeric query with '#' prefix resolves exact episode #48
         val byNumber = filterLibraryComics(
             comics = allComics,
-            query = "#98",
+            query = "#48",
             selectedFilter = LibraryFilter.ALL,
             isPremiumUnlocked = true,
             seriesUnlocked = false,
             adUnlockedMaxStory = 10
         )
-        assertEquals(listOf(98), byNumber.map { it.storyNumber })
+        assertEquals(listOf(48), byNumber.map { it.storyNumber })
 
         // Keyword query matches localized RU content cleanly and unknown words return empty
         val byKeyword = filterLibraryComics(
             comics = allComics,
-            query = "финиковой",
+            query = "терновник",
             selectedFilter = LibraryFilter.BAZAAR,
             isPremiumUnlocked = false,
             seriesUnlocked = false,
             adUnlockedMaxStory = 10
         )
-        assertEquals(listOf(51), byKeyword.map { it.storyNumber })
+        assertEquals(listOf(19), byKeyword.map { it.storyNumber })
 
         val noMatch = filterLibraryComics(
             comics = allComics,
@@ -659,14 +647,14 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `dialogue-rich second-half parables 79 and 90 parse cleanly across RU ES and EN`() {
+    fun `dialogue-rich Volume 1 parables 39, 44, and 48 parse cleanly across RU ES and EN`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = ComicRepository(context)
 
         for (lang in listOf(AppLanguage.RUSSIAN, AppLanguage.SPANISH, AppLanguage.ENGLISH)) {
             repository.setLanguage(lang)
             val builtIn = repository.comics.value.filter { it.isBuiltIn }
-            for (storyNumber in listOf(79, 90)) {
+            for (storyNumber in listOf(39, 44, 48)) {
                 val story = builtIn.first { it.storyNumber == storyNumber }
                 assertEquals(5, story.pages.size)
                 val allBubbles = story.pages.flatMap { it.bubbles }

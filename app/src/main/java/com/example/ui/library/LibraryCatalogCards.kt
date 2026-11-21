@@ -251,7 +251,7 @@ internal fun FeaturedComicBanner(
 }
 
 /**
- * Individual story card inside the 100-story library list.
+ * Individual story card inside the 50-story Volume 1 library list.
  * Downsamples `3:4` ornate Eastern covers to `240x320` px via Coil while dynamically stamping
  * the story's localized title into the top cartouche, plus quick Comic, Parchment Text, and Sequence actions.
  */

@@ -26,7 +26,7 @@ import java.util.Locale
  * 2. Every built-in story strictly provides at least 4 readable pages (cover + 4 panels = 5 for vault):
  *    - Story #1 uses a themed localized Eastern cover plus 3 full-page comic scenes (4 pages).
  *    - Stories #2..#10 prepend a localized Eastern cover page and split each 2x2 comic sheet into 4 panel pages (5 pages).
- *    - Stories #11..#100 prepend a localized Eastern cover page paired with 4 cropped panel scenes and dynamic localized bubbles (5 pages).
+ *    - Stories #11..#50 prepend a localized Eastern cover page paired with unique bespoke 4-panel scenes and dynamic localized bubbles (5 pages).
  */
 class ComicRepository(private val context: Context) {
 
@@ -102,7 +102,7 @@ class ComicRepository(private val context: Context) {
     }
 
     fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int? = null): Int {
-        val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 100)
+        val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 50)
         val nextMax = (_adUnlockedMaxStory.value + batchSize).coerceAtMost(catalogMax)
         _adUnlockedMaxStory.value = nextMax
         prefs.edit().putInt(KEY_AD_UNLOCKED_MAX_STORY, nextMax).apply()
@@ -148,7 +148,7 @@ class ComicRepository(private val context: Context) {
         // Add featured story first
         list.add(featuredStory)
 
-        // Add stories 2 through catalog end (100 built-in stories in v1.1)
+        // Add stories 2 through catalog end (50 curated Volume 1 stories)
         for (story in storiesFromVault.drop(1)) {
             list.add(story)
         }
@@ -191,8 +191,7 @@ class ComicRepository(private val context: Context) {
                 val normalizedTheme = resolveNormalizedTheme(rawTheme, seq)
                 val coverDrawable = resolveStoryCoverDrawable(normalizedTheme, seq)
                 val episodeDrawable = getEpisodeDrawable(seq, lang)
-                val bespokeSheetDrawable = resolveStoryBespokeSheetDrawable(seq)
-                val panelSheetDrawable = bespokeSheetDrawable ?: resolveUniversalTemplateDrawable(normalizedTheme, seq)
+                val panelSheetDrawable = resolveStoryBespokeSheetDrawable(seq) ?: coverDrawable
 
                 val coverPage = ComicPage(
                     id = "${id}_cover",
@@ -227,8 +226,8 @@ class ComicRepository(private val context: Context) {
                         )
                     }
                 } else {
-                    // Bespoke text-free 2x2 sheets (#11..#50) and universal templates (#51..#100)
-                    // serve all languages while StoryBubbleComposer renders localized dialogue balloons dynamically.
+                    // Bespoke text-free 2x2 sheets (#11..#50) serve all languages while
+                    // StoryBubbleComposer renders localized dialogue balloons dynamically.
                     val universalQuadrantCrops = listOf(
                         PanelCrop(left = 0.020f, top = 0.018f, right = 0.490f, bottom = 0.490f),
                         PanelCrop(left = 0.510f, top = 0.018f, right = 0.980f, bottom = 0.490f),
@@ -309,63 +308,7 @@ class ComicRepository(private val context: Context) {
      * Resolves a story-specific text-free 2x2 illustrated plate for stories #11..#50 so each
      * episode depicts its own plot beats while retaining localized RU/ES/EN dialogue bubbles.
      */
-    internal fun resolveStoryBespokeSheetDrawable(sequence: Int): Int? {
-        return when (sequence) {
-            11 -> R.drawable.img_story_011
-            12 -> R.drawable.img_story_012
-            13 -> R.drawable.img_story_013
-            14 -> R.drawable.img_story_014
-            15 -> R.drawable.img_story_015
-            16 -> R.drawable.img_story_016
-            17 -> R.drawable.img_story_017
-            18 -> R.drawable.img_story_018
-            19 -> R.drawable.img_story_019
-            20 -> R.drawable.img_story_020
-            21 -> R.drawable.img_story_021
-            22 -> R.drawable.img_story_022
-            23 -> R.drawable.img_story_023
-            24 -> R.drawable.img_story_024
-            25 -> R.drawable.img_story_025
-            26 -> R.drawable.img_story_026
-            27 -> R.drawable.img_story_027
-            28 -> R.drawable.img_story_028
-            29 -> R.drawable.img_story_029
-            30 -> R.drawable.img_story_030
-            31 -> R.drawable.img_story_031
-            32 -> R.drawable.img_story_032
-            33 -> R.drawable.img_story_033
-            34 -> R.drawable.img_story_034
-            35 -> R.drawable.img_story_035
-            36 -> R.drawable.img_story_036
-            37 -> R.drawable.img_story_037
-            38 -> R.drawable.img_story_038
-            39 -> R.drawable.img_story_039
-            40 -> R.drawable.img_story_040
-            41 -> R.drawable.img_story_041
-            42 -> R.drawable.img_story_042
-            43 -> R.drawable.img_story_043
-            44 -> R.drawable.img_story_044
-            45 -> R.drawable.img_story_045
-            46 -> R.drawable.img_story_046
-            47 -> R.drawable.img_story_047
-            48 -> R.drawable.img_story_048
-            49 -> R.drawable.img_story_049
-            50 -> R.drawable.img_story_050
-            else -> null
-        }
-    }
-
-    /**
-     * Selects the universal 2x2 text-free sheet matching a story's setting ("bazaar", "teahouse",
-     * or "night") and cycles evenly when no explicit theme tag is provided in JSON.
-     */
-    internal fun resolveUniversalTemplateDrawable(theme: String?, sequence: Int): Int {
-        return when (resolveNormalizedTheme(theme, sequence)) {
-            "teahouse" -> R.drawable.img_universal_hodja_teahouse
-            "night" -> R.drawable.img_universal_hodja_night
-            else -> R.drawable.img_universal_hodja_template
-        }
-    }
+    internal fun resolveStoryBespokeSheetDrawable(sequence: Int): Int? = BESPOKE_STORY_DRAWABLES[sequence]
 
     /**
      * Resolves an ornate Eastern-framed cover template with a blank title cartouche
@@ -751,5 +694,48 @@ class ComicRepository(private val context: Context) {
         private const val KEY_PREMIUM_UNLOCKED = "premium_unlocked"
         private const val KEY_SERIES_UNLOCKED = "series_unlocked"
         private const val KEY_AD_UNLOCKED_MAX_STORY = "ad_unlocked_max_story"
+
+        private val BESPOKE_STORY_DRAWABLES: Map<Int, Int> = mapOf(
+            11 to R.drawable.img_story_011,
+            12 to R.drawable.img_story_012,
+            13 to R.drawable.img_story_013,
+            14 to R.drawable.img_story_014,
+            15 to R.drawable.img_story_015,
+            16 to R.drawable.img_story_016,
+            17 to R.drawable.img_story_017,
+            18 to R.drawable.img_story_018,
+            19 to R.drawable.img_story_019,
+            20 to R.drawable.img_story_020,
+            21 to R.drawable.img_story_021,
+            22 to R.drawable.img_story_022,
+            23 to R.drawable.img_story_023,
+            24 to R.drawable.img_story_024,
+            25 to R.drawable.img_story_025,
+            26 to R.drawable.img_story_026,
+            27 to R.drawable.img_story_027,
+            28 to R.drawable.img_story_028,
+            29 to R.drawable.img_story_029,
+            30 to R.drawable.img_story_030,
+            31 to R.drawable.img_story_031,
+            32 to R.drawable.img_story_032,
+            33 to R.drawable.img_story_033,
+            34 to R.drawable.img_story_034,
+            35 to R.drawable.img_story_035,
+            36 to R.drawable.img_story_036,
+            37 to R.drawable.img_story_037,
+            38 to R.drawable.img_story_038,
+            39 to R.drawable.img_story_039,
+            40 to R.drawable.img_story_040,
+            41 to R.drawable.img_story_041,
+            42 to R.drawable.img_story_042,
+            43 to R.drawable.img_story_043,
+            44 to R.drawable.img_story_044,
+            45 to R.drawable.img_story_045,
+            46 to R.drawable.img_story_046,
+            47 to R.drawable.img_story_047,
+            48 to R.drawable.img_story_048,
+            49 to R.drawable.img_story_049,
+            50 to R.drawable.img_story_050
+        )
     }
 }
