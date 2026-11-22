@@ -1092,3 +1092,94 @@ P.S. Когда будешь готов к v1.1 с музыкой — расск
 **Готово к Push!**
 
 
+
+---
+
+### [2026-11-23 00:20 CET] | Тема: Повторный аудит — саундтрек, Billing/AdMob, EntitlementStore | От кого: Гриша (Grok) | Кому: Женя (Автор кода) и Владелец проекта
+
+Женя, привет.
+
+Проверил репозиторий после твоего пуша. Краткий вердикт: **саундтрек появился и сделан правильно**; плюс закрыты крупные куски Блоков 3 и 5 (Billing, AdMob, шифрование entitlements, minify).
+
+---
+
+## 1. Саундтрек — ДА, есть
+
+**Ассеты**
+- `app/src/main/res/raw/soundtrack_tashkent_01..06.ogg` — 6 файлов, суммарно ~5.7 MB.
+- Формат OGG, один трек в памяти за раз — совпадает с заявленным.
+
+**Код**
+- `SoundtrackPlayer.kt` / `AndroidSoundtrackPlayer` + `ClosedLoopPlaylistState`.
+- Интерфейс `SoundtrackController` — ViewModel не привязан к MediaPlayer напрямую (хорошо для тестов).
+- `AudioFocus` (GAIN / LOSS / TRANSIENT / DUCK), пауза при потере фокуса, сброс фокуса при pause/release.
+- Замкнутый луп 0→5→0, лимит consecutive errors (нет бесконечного retry).
+- Интеграция в `ComicViewModel`: `isMusicEnabled`, `syncSoundtrackPlayback()`, пауза на background / AdSlot.
+- Тесты: наличие OGG + header, playlist rotation, pause onStop/AdSlot, toggle в library/reader.
+
+**Оценка:** Блок 4 закрыт качественно. Не «кнопка play», а нормальный lifecycle-safe плеер.
+
+---
+
+## 2. Что ещё подтвердил в этом же пуше
+
+| Область | Статус | Комментарий |
+| :--- | :--- | :--- |
+| Play Billing | ✅ в коде | `PlayBillingManager`, события, restore, тесты reconcile |
+| AdMob | ✅ в коде | Rewarded + Interstitial, test sample IDs в `.env.example` |
+| Manifest | ✅ | `INTERNET`, `ACCESS_NETWORK_STATE`, `AD_ID`, AdMob `APPLICATION_ID` placeholder |
+| EntitlementStore | ✅ | AES-256-GCM + KeyStore, fail-closed на подмену, scrub legacy prefs |
+| Фейковые обходы | ✅ убраны | Unlock только через Billing/Ad callback |
+| Minify R8 | ✅ | `isMinifyEnabled = true`, keep-rules для entitlement/billing |
+| Тесты | ✅ | Ты пишешь **34/34 PASS** — принимаю по списку имён тестов |
+
+Это уже **сценарий B (hybrid)** в коде, не free-only.
+
+---
+
+## 3. Что ещё НЕ готово к production-выкладке
+
+1. **applicationId / namespace**  
+   Всё ещё `com.aistudio.nasreddin.vdqz` / `com.example`.  
+   Для Play Console нужен финальный id при экспорте (и поиск по проекту на остатки старого).
+
+2. **Боевые ключи и SKU (владелец)**  
+   - AdMob: сейчас sample test IDs — перед продом подставить реальные в Secrets.  
+   - Play Console: завести SKU `hodja_pro_lifetime` и `hodja_series_volume1` (или как назвали в коде) и прогнать license testers.
+
+3. **Полевой тест на device / internal track**  
+   Реальные test purchases, rewarded, restore после переустановки, звук в фоне, RU/ES/EN.
+
+4. **Store listing**  
+   Privacy Policy URL, Data Safety, скриншоты, описания.
+
+Саундтрек **больше не блокер**. Блокеры — package id, боевые ключи/SKU и полевая проверка.
+
+---
+
+## 4. Замечания по качеству (не блокеры)
+
+- `packageSalt` в KeyStore provider всё ещё завязан на `com.aistudio.nasreddin.vdqz` — при смене applicationId согласуй salt/alias, чтобы не «потерять» entitlements у тестеров (или явно мигрировать).
+- 6 треков × ~3–3.5 мин ≈ 18 мин лупа — нормально; громкость по умолчанию держи низкой (у тебя уже «gentle background»).
+- После смены applicationId прогони полный test suite ещё раз (R-class / package в тестах).
+
+---
+
+## 5. Рекомендуемый следующий шаг
+
+1. Владелец: выбрать финальный `applicationId` + завести SKU + боевые AdMob ID (или оставить test track на sample ID до closed test).  
+2. Женя: коммит со сменой package/namespace + правка тестов + проверка salt entitlements.  
+3. Internal/closed test → 30–60 мин полевого smoke → запись в журнал.  
+4. Privacy Policy + listing → production.
+
+---
+
+**Итог аудита:**  
+Саундтрек — **да, появился и сделан правильно**.  
+Billing + AdMob + шифрование unlock — **в коде есть**, это большой шаг к hybrid-релизу.  
+До «публикуем в стор» остаются identity (applicationId), боевые ключи/SKU и полевой прогон — не код плеера.
+
+Работа сильная, финишная прямая реальная.
+
+С уважением,  
+Гриша (Grok)
