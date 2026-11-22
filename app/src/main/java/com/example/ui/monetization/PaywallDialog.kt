@@ -26,20 +26,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -60,16 +55,12 @@ import com.example.ui.theme.CyberSurfaceElevated
 import com.example.ui.theme.GaudiCoralRed
 import com.example.ui.theme.VanGoghStarGold
 import com.example.util.AppStrings
-import kotlinx.coroutines.delay
 
 /**
- * Hybrid Monetization paywall offering three clear paths to continue reading locked episodes:
- * 1. Lifetime PRO Ad-Free (`$4.99`) — unlocks all stories + removes all sponsor breaks + custom tools.
- * 2. Ad-Free Series Pack (`$0.99`) — unlocks the built-in series ad-free (hidden once [seriesUnlocked] is true).
- * 3. Watch Rewarded Ad (`+5 stories`) — unlocks episodes in batches of 5 while keeping sponsor breaks active.
- *
- * Production integration seam: wire [onBuyPro], [onBuySeries], and [onRestore] to Google Play
- * Billing / RuStore BillingClient, and route [onWatchAd] to AdMob / Yandex RewardedAd callbacks.
+ * Hybrid Monetization paywall offering three Play/AdMob-verified paths to read locked episodes:
+ * 1. Lifetime PRO Ad-Free (`hodja_pro_lifetime`) — unlocks all stories + removes all sponsor breaks.
+ * 2. Ad-Free Series Pack (`hodja_series_volume1`) — unlocks the built-in Volume 1 series ad-free.
+ * 3. Watch AdMob Rewarded Ad (`+5 stories`) — unlocks episodes in batches of 5 via verified reward callback.
  */
 @Composable
 fun PaywallDialog(
@@ -77,13 +68,16 @@ fun PaywallDialog(
     seriesUnlocked: Boolean,
     adUnlockedMaxStory: Int,
     totalStoriesCount: Int,
+    proPriceLabel: String? = null,
+    seriesPriceLabel: String? = null,
+    isBusy: Boolean = false,
+    statusMessage: String? = null,
     onBuyPro: () -> Unit,
     onBuySeries: () -> Unit,
     onWatchAd: () -> Unit,
     onRestore: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Once the user owns the Series Pack, only Lifetime PRO upgrade remains relevant
     val canUnlockMoreViaAd = !seriesUnlocked && adUnlockedMaxStory < totalStoriesCount
     val nextBatchStart = (adUnlockedMaxStory + 1).coerceAtMost(totalStoriesCount)
     val nextBatchEnd = (adUnlockedMaxStory + 5).coerceAtMost(totalStoriesCount)
@@ -164,7 +158,6 @@ fun PaywallDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // PRO Card ($4.99)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = CyberMidnight),
@@ -198,15 +191,17 @@ fun PaywallDialog(
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.Center
                         ) {
+                            if (proPriceLabel == null) {
+                                Text(
+                                    text = AppStrings.paywallOriginalPrice(),
+                                    fontSize = 18.sp,
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    textDecoration = TextDecoration.LineThrough,
+                                    modifier = Modifier.padding(bottom = 4.dp, end = 10.dp)
+                                )
+                            }
                             Text(
-                                text = AppStrings.paywallOriginalPrice(),
-                                fontSize = 18.sp,
-                                color = Color.White.copy(alpha = 0.4f),
-                                textDecoration = TextDecoration.LineThrough,
-                                modifier = Modifier.padding(bottom = 4.dp, end = 10.dp)
-                            )
-                            Text(
-                                text = AppStrings.paywallSalePrice(),
+                                text = proPriceLabel ?: AppStrings.paywallSalePrice(),
                                 fontSize = 36.sp,
                                 fontWeight = FontWeight.Black,
                                 color = VanGoghStarGold
@@ -227,11 +222,33 @@ fun PaywallDialog(
                     BenefitRow(AppStrings.paywallBenefit4(currentLanguage))
                 }
 
+                if (!statusMessage.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("paywall_status_banner"),
+                        shape = RoundedCornerShape(12.dp),
+                        color = GaudiCoralRed.copy(alpha = 0.16f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GaudiCoralRed.copy(alpha = 0.7f))
+                    ) {
+                        Text(
+                            text = statusMessage,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // 1. Primary CTA: PRO Ad-Free Lifetime ($4.99)
+                // 1. Primary CTA: PRO Ad-Free Lifetime (Google Play Billing)
                 Button(
                     onClick = onBuyPro,
+                    enabled = !isBusy,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -242,21 +259,30 @@ fun PaywallDialog(
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = AppStrings.buyButtonText(currentLanguage),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    if (isBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color(0xFF281500)
+                        )
+                    } else {
+                        Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = AppStrings.buyButtonText(currentLanguage, proPriceLabel),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
 
-                // 2. Series Pack CTA ($0.99 Ad-Free Series) — hidden if already purchased
+                // 2. Series Pack CTA (Google Play Billing) — hidden if already purchased
                 if (!seriesUnlocked) {
                     Spacer(modifier = Modifier.height(10.dp))
 
                     FilledTonalButton(
                         onClick = onBuySeries,
+                        enabled = !isBusy,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
@@ -270,7 +296,7 @@ fun PaywallDialog(
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = AppStrings.buySeriesButtonText(currentLanguage, totalStoriesCount),
+                            text = AppStrings.buySeriesButtonText(currentLanguage, totalStoriesCount, seriesPriceLabel),
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center
@@ -278,11 +304,12 @@ fun PaywallDialog(
                     }
                 }
 
-                // 3. Free Ad-Supported Option (+5 stories via Ad)
+                // 3. Free Ad-Supported Option (+5 stories via AdMob RewardedAd)
                 if (canUnlockMoreViaAd) {
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
                         onClick = onWatchAd,
+                        enabled = !isBusy,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
@@ -304,9 +331,10 @@ fun PaywallDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // 4. Restore Purchase
+                // 4. Restore Purchase via Google Play Billing queryPurchasesAsync
                 OutlinedButton(
                     onClick = onRestore,
+                    enabled = !isBusy,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
@@ -326,44 +354,27 @@ fun PaywallDialog(
 }
 
 /**
- * Modal overlay handling both Rewarded Ad unlocks (`isRewarded == true`) and periodic
- * Sponsor Interstitial breaks (`isRewarded == false`, every 4 ad-supported story switches).
- *
- * Enforces a non-skippable countdown in rewarded mode before enabling [onComplete] so
- * reward verification matches standard ad-network completion contracts.
+ * Lightweight scrim displayed only while Google Mobile Ads SDK is actively loading/handing off
+ * to the native ad activity. Contains zero unlock/bypass actions.
  */
 @Composable
-fun AdSlotOverlayDialog(
+fun AdLoadingOverlayDialog(
     currentLanguage: AppLanguage,
-    isRewarded: Boolean,
-    onComplete: () -> Unit,
-    onUpgradePro: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val totalSeconds = 4
-    var secondsLeft by remember { mutableIntStateOf(totalSeconds) }
-
-    LaunchedEffect(Unit) {
-        while (secondsLeft > 0) {
-            delay(1000L)
-            secondsLeft -= 1
-        }
-    }
-
-    val progress = 1f - (secondsLeft.toFloat() / totalSeconds.toFloat())
-
     Dialog(
-        onDismissRequest = { if (secondsLeft == 0 || !isRewarded) onDismiss() },
+        onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = !isRewarded || secondsLeft == 0,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .padding(vertical = 24.dp),
+                .fillMaxWidth(0.86f)
+                .padding(vertical = 24.dp)
+                .testTag("ad_loading_dialog"),
             shape = RoundedCornerShape(22.dp),
             color = CyberMidnight,
             border = androidx.compose.foundation.BorderStroke(1.5.dp, CyberNeonCyan),
@@ -372,141 +383,42 @@ fun AdSlotOverlayDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = CyberSurfaceElevated
-                    ) {
-                        Text(
-                            text = "AD • SPONSOR",
-                            color = CyberNeonCyan,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    if (secondsLeft == 0 || !isRewarded) {
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.size(48.dp).testTag("ad_slot_close_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = AppStrings.close(currentLanguage),
-                                tint = Color.White.copy(alpha = 0.75f)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(CyberSurfaceElevated, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayCircleOutline,
-                        contentDescription = null,
-                        tint = VanGoghStarGold,
-                        modifier = Modifier.size(38.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
+                CircularProgressIndicator(
+                    modifier = Modifier.size(44.dp),
+                    color = VanGoghStarGold,
+                    trackColor = CyberSurfaceElevated
+                )
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = AppStrings.adSlotTitle(currentLanguage, isRewarded),
+                    text = AppStrings.adLoadingTitle(currentLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = VanGoghStarGold,
                     textAlign = TextAlign.Center
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Text(
-                    text = AppStrings.adSlotBody(currentLanguage, isRewarded),
+                    text = AppStrings.adLoadingBody(currentLanguage),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.85f),
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-                    color = VanGoghStarGold,
-                    trackColor = CyberSurfaceElevated
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = if (secondsLeft > 0) {
-                        AppStrings.adSlotCountdown(currentLanguage, secondsLeft)
-                    } else {
-                        "✓"
-                    },
-                    color = CyberNeonCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onComplete,
-                    enabled = secondsLeft == 0,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("ad_slot_claim_btn"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VanGoghStarGold,
-                        contentColor = Color(0xFF281500),
-                        disabledContainerColor = CyberSurfaceElevated,
-                        disabledContentColor = Color.White.copy(alpha = 0.4f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = AppStrings.adSlotContinueAction(currentLanguage, isRewarded),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
                 OutlinedButton(
-                    onClick = onUpgradePro,
+                    onClick = onDismiss,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
-                        .testTag("ad_slot_upgrade_pro_btn"),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberNeonCyan),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CyberNeonCyan.copy(alpha = 0.6f)),
+                        .testTag("ad_loading_cancel_btn"),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White.copy(alpha = 0.85f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = AppStrings.buyButtonText(currentLanguage),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(text = AppStrings.cancel(currentLanguage), fontSize = 13.sp)
                 }
             }
         }

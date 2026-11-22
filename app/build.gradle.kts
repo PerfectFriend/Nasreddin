@@ -13,11 +13,22 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.cybercomics.vdqz"
+    applicationId = "com.aistudio.nasreddin.vdqz"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
-    versionName = "1.0"
+    versionName = "1.0.0"
+
+    val envFile = rootProject.file(".env")
+    val envAdmobAppId = if (envFile.exists()) {
+      envFile.readLines()
+        .firstOrNull { it.trim().startsWith("ADMOB_APP_ID=") }
+        ?.substringAfter("=")
+        ?.trim()
+    } else null
+    manifestPlaceholders["ADMOB_APP_ID"] = System.getenv("ADMOB_APP_ID")
+      ?: envAdmobAppId
+      ?: "ca-app-pub-3940256099942544~3347511713"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -126,6 +137,8 @@ dependencies {
   // implementation(libs.moshi.kotlin)
   // implementation(libs.okhttp)
   // implementation(libs.play.services.location)
+  implementation(libs.billing.ktx)
+  implementation(libs.play.services.ads)
   // implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

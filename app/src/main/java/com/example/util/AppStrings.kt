@@ -418,16 +418,26 @@ object AppStrings {
         AppLanguage.ENGLISH -> "High-res offline reading"
     }
 
-    fun buyButtonText(lang: AppLanguage): String = when (lang) {
-        AppLanguage.RUSSIAN -> "PRO без рекламы — $4.99"
-        AppLanguage.SPANISH -> "PRO sin anuncios — $4.99"
-        AppLanguage.ENGLISH -> "Go PRO Ad-Free — $4.99"
+    fun buyButtonText(lang: AppLanguage, localizedPrice: String? = null): String {
+        val price = localizedPrice ?: paywallSalePrice()
+        return when (lang) {
+            AppLanguage.RUSSIAN -> "PRO без рекламы — $price"
+            AppLanguage.SPANISH -> "PRO sin anuncios — $price"
+            AppLanguage.ENGLISH -> "Go PRO Ad-Free — $price"
+        }
     }
 
-    fun buySeriesButtonText(lang: AppLanguage, totalCount: Int = 50): String = when (lang) {
-        AppLanguage.RUSSIAN -> "Открыть серию 11–$totalCount без рекламы — $0.99"
-        AppLanguage.SPANISH -> "Abrir serie 11–$totalCount sin anuncios — $0.99"
-        AppLanguage.ENGLISH -> "Unlock Series 11–$totalCount Ad-Free — $0.99"
+    fun buySeriesButtonText(
+        lang: AppLanguage,
+        totalCount: Int = 50,
+        localizedPrice: String? = null
+    ): String {
+        val price = localizedPrice ?: seriesSalePrice()
+        return when (lang) {
+            AppLanguage.RUSSIAN -> "Открыть серию 11–$totalCount без рекламы — $price"
+            AppLanguage.SPANISH -> "Abrir serie 11–$totalCount sin anuncios — $price"
+            AppLanguage.ENGLISH -> "Unlock Series 11–$totalCount Ad-Free — $price"
+        }
     }
 
     fun watchAdButtonText(lang: AppLanguage, nextStart: Int, nextEnd: Int): String = when (lang) {
@@ -719,5 +729,71 @@ object AppStrings {
         AppLanguage.RUSSIAN -> "Листайте дальше, чтобы читать притчу"
         AppLanguage.SPANISH -> "Desliza para leer el cómic"
         AppLanguage.ENGLISH -> "Swipe to read the comic"
+    }
+
+    fun musicToggleTooltip(lang: AppLanguage, enabled: Boolean): String = when (lang) {
+        AppLanguage.RUSSIAN -> if (enabled) "Выключить музыку" else "Включить восточную музыку"
+        AppLanguage.SPANISH -> if (enabled) "Silenciar música" else "Activar música oriental"
+        AppLanguage.ENGLISH -> if (enabled) "Mute soundtrack" else "Play soundtrack"
+    }
+
+    fun musicEnabledStatusMessage(lang: AppLanguage, enabled: Boolean): String = when (lang) {
+        AppLanguage.RUSSIAN -> if (enabled) "Восточный саундтрек включён" else "Музыка выключена"
+        AppLanguage.SPANISH -> if (enabled) "Música oriental activada" else "Música silenciada"
+        AppLanguage.ENGLISH -> if (enabled) "Eastern soundtrack enabled" else "Soundtrack muted"
+    }
+
+    fun musicShortLabel(lang: AppLanguage, enabled: Boolean): String = when (lang) {
+        AppLanguage.RUSSIAN -> if (enabled) "Музыка" else "Без звука"
+        AppLanguage.SPANISH -> if (enabled) "Música" else "Silencio"
+        AppLanguage.ENGLISH -> if (enabled) "Music" else "Muted"
+    }
+
+    fun billingPurchasePending(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Оплата ожидает подтверждения в Google Play. Доступ откроется автоматически после завершения платежа."
+        AppLanguage.SPANISH -> "Pago pendiente en Google Play. El acceso se abrirá automáticamente al completarse."
+        AppLanguage.ENGLISH -> "Payment is pending in Google Play. Access will unlock automatically once confirmed."
+    }
+
+    fun billingCancelled(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Покупка отменена."
+        AppLanguage.SPANISH -> "Compra cancelada."
+        AppLanguage.ENGLISH -> "Purchase cancelled."
+    }
+
+    fun billingUnavailableError(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Google Play Биллинг пока недоступен. Проверьте вход в Google Play и сеть."
+        AppLanguage.SPANISH -> "Google Play Billing no está disponible ahora. Verifica tu cuenta y conexión."
+        AppLanguage.ENGLISH -> "Google Play Billing is currently unavailable. Check Play Store sign-in and network."
+    }
+
+    fun billingNoPurchasesFound(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Активные покупки для этого аккаунта Google Play не найдены."
+        AppLanguage.SPANISH -> "No se encontraron compras activas en tu cuenta de Google Play."
+        AppLanguage.ENGLISH -> "No prior purchases found for this Google Play account."
+    }
+
+    fun rewardedAdNotReadyError(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Реклама ещё не загрузилась. Проверьте интернет и попробуйте снова."
+        AppLanguage.SPANISH -> "El anuncio aún no está listo. Comprueba tu conexión e inténtalo de nuevo."
+        AppLanguage.ENGLISH -> "Ad is not ready yet. Check your internet connection and try again."
+    }
+
+    fun rewardedAdClosedEarly(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Досмотрите ролик до конца, чтобы открыть +5 историй."
+        AppLanguage.SPANISH -> "Mira el anuncio completo para desbloquear +5 historias."
+        AppLanguage.ENGLISH -> "Watch the full ad to unlock +5 stories."
+    }
+
+    fun adLoadingTitle(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Загрузка рекламного ролика…"
+        AppLanguage.SPANISH -> "Cargando anuncio…"
+        AppLanguage.ENGLISH -> "Loading ad…"
+    }
+
+    fun adLoadingBody(lang: AppLanguage): String = when (lang) {
+        AppLanguage.RUSSIAN -> "Подождите пару секунд, подключаемся к Google Mobile Ads."
+        AppLanguage.SPANISH -> "Espera unos segundos mientras conectamos con Google Mobile Ads."
+        AppLanguage.ENGLISH -> "Please wait a moment while Google Mobile Ads prepares the break."
     }
 }

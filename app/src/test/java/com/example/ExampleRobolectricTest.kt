@@ -1,5 +1,6 @@
 package com.example
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import androidx.compose.foundation.layout.Box
@@ -16,10 +17,21 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import com.example.audio.AndroidSoundtrackPlayer
+import com.example.audio.ClosedLoopPlaylistState
+import com.example.audio.SoundtrackController
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
 import com.example.model.BubbleStyle
 import com.example.model.PanelCrop
+import com.example.monetization.AdShowResult
+import com.example.monetization.AdsGateway
+import com.example.monetization.BillingEvent
+import com.example.monetization.BillingGateway
+import com.example.monetization.SkuCatalog
+import com.example.monetization.StoreProductPrices
+import com.example.security.EntitlementSnapshot
+import com.example.security.EntitlementStore
 import com.example.ui.ComicViewModel
 import com.example.ui.components.CoverCartoucheTitleOverlay
 import com.example.ui.components.computeCoverTitleFontSp
@@ -27,6 +39,7 @@ import com.example.ui.components.splitCoverTitleAndBadge
 import com.example.ui.library.ComicLibraryScreen
 import com.example.ui.library.LibraryFilter
 import com.example.ui.library.filterLibraryComics
+import com.example.ui.monetization.PaywallDialog
 import com.example.ui.reader.ComicPanelCropCache
 import com.example.ui.reader.computeAdaptiveBubbleTypography
 import com.example.ui.reader.computeFittedArtworkRect
@@ -34,6 +47,12 @@ import com.example.ui.theme.CyberComicsTheme
 import com.example.util.AppStrings
 import com.example.util.FolderImporter
 import com.example.util.StoryBubbleComposer
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -198,9 +217,13 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `viewModel switches directly between stories and handles hybrid ad and PRO unlock seamlessly`() {
+    fun `viewModel switches directly between stories and requires verified Billing and Ad callbacks without bypass`() {
         val app = ApplicationProvider.getApplicationContext<Application>()
+        val fakeBilling = FakeBillingGateway()
+        val fakeAds = FakeAdsGateway()
         val viewModel = ComicViewModel(app)
+        viewModel.attachMonetizationGatewaysForTest(fakeBilling, fakeAds)
+        viewModel.setLanguage(AppLanguage.ENGLISH)
 
         // Open Story 1 directly via splash CTA
         viewModel.dismissSplash(openReaderDirectly = true)
@@ -228,24 +251,38 @@ class ExampleRobolectricTest {
         assertTrue(viewModel.uiState.value.isPaywallOpen)
         assertEquals(10, viewModel.uiState.value.activeComic?.storyNumber)
 
-        // Watch rewarded ad to unlock next 5 stories (11..15) and open pending Story 11 automatically
+        // Closing rewarded ad early MUST NOT grant access
         viewModel.startRewardedAdUnlock()
-        assertFalse(viewModel.uiState.value.isPaywallOpen)
         assertTrue(viewModel.uiState.value.isAdSlotOpen)
-        assertTrue(viewModel.uiState.value.isRewardedAdMode)
+        assertTrue(viewModel.uiState.value.isAdLoading)
+        fakeAds.finishRewarded(AdShowResult.ClosedWithoutReward)
+        assertFalse(viewModel.uiState.value.isAdSlotOpen)
+        assertEquals(10, viewModel.uiState.value.adUnlockedMaxStory)
+        assertTrue(viewModel.uiState.value.isPaywallOpen)
 
-        viewModel.completeAdSlot()
+        // Verified RewardEarned callback unlocks next 5 stories (11..15) and opens Story 11
+        viewModel.startRewardedAdUnlock()
+        fakeAds.finishRewarded(AdShowResult.RewardEarned)
         assertFalse(viewModel.uiState.value.isAdSlotOpen)
         assertEquals(15, viewModel.uiState.value.adUnlockedMaxStory)
         assertEquals(11, viewModel.uiState.value.activeComic?.storyNumber)
 
-        // Story 16 is still locked until next ad / series / PRO
+        // Story 16 is still locked; clicking Series Pack launches Billing without instant free unlock
         val story16 = viewModel.uiState.value.comics.first { it.storyNumber == 16 }
         viewModel.openComic(story16, 0)
         assertTrue(viewModel.uiState.value.isPaywallOpen)
 
-        // Buy series pack ($0.99) -> unlocks Story 16 immediately ad-free
         viewModel.buySeriesPack()
+        assertEquals(SkuCatalog.SKU_SERIES_VOLUME1, fakeBilling.lastLaunchedSku)
+        assertFalse("Must never unlock series before verified Billing confirmation", viewModel.uiState.value.seriesUnlocked)
+
+        // Pending payment keeps series locked with informative status
+        fakeBilling.emitEvent(BillingEvent.PurchasePending)
+        assertFalse(viewModel.uiState.value.seriesUnlocked)
+        assertNotNull(viewModel.uiState.value.paywallStatusMessage)
+
+        // Verified Play PurchaseGranted unlocks Series Pack immediately and opens pending Story 16
+        fakeBilling.emitEvent(BillingEvent.PurchaseGranted(SkuCatalog.SKU_SERIES_VOLUME1))
         assertFalse(viewModel.uiState.value.isPaywallOpen)
         assertTrue(viewModel.uiState.value.seriesUnlocked)
         assertEquals(16, viewModel.uiState.value.activeComic?.storyNumber)
@@ -825,5 +862,275 @@ class ExampleRobolectricTest {
         composeTestRule.onNodeWithTag("library_lazy_column")
             .performScrollToNode(hasTestTag("featured_comic_banner"))
         composeTestRule.onNodeWithTag("featured_comic_banner").assertIsDisplayed()
+    }
+
+    @Test
+    fun `all 6 compressed OGG soundtrack resources exist with valid OggS headers and compact total size`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val tracks = AndroidSoundtrackPlayer.DEFAULT_TRACKS
+        assertEquals(6, tracks.size)
+
+        var totalBytes = 0L
+        for (resId in tracks) {
+            val bytes = context.resources.openRawResource(resId).use { it.readBytes() }
+            assertTrue("Track $resId should be non-empty", bytes.size > 1024)
+            assertEquals('O'.code.toByte(), bytes[0])
+            assertEquals('g'.code.toByte(), bytes[1])
+            assertEquals('g'.code.toByte(), bytes[2])
+            assertEquals('S'.code.toByte(), bytes[3])
+            totalBytes += bytes.size
+        }
+
+        // Compressed 6-track 18-minute OGG Vorbis loop must stay compact (< 7 MB total)
+        assertTrue("Expected compact OGG soundtrack < 7 MB, was $totalBytes bytes", totalBytes < 7L * 1024L * 1024L)
+    }
+
+    @Test
+    fun `closedLoopPlaylistState rotates cleanly around 6 tracks and caps consecutive error retries`() {
+        val trackIds = listOf(101, 102, 103, 104, 105, 106)
+        val loop = ClosedLoopPlaylistState(trackIds)
+
+        assertEquals(0, loop.currentIndex)
+        assertEquals(101, loop.currentTrackResId())
+
+        val visitedIndices = mutableListOf(loop.currentIndex)
+        repeat(7) {
+            loop.advanceToNextTrack()
+            visitedIndices.add(loop.currentIndex)
+        }
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 0, 1), visitedIndices)
+
+        // Recovering playback resets consecutive errors
+        assertTrue(loop.onTrackErrorShouldRetry())
+        assertEquals(2, loop.currentIndex)
+        loop.markPlaybackStarted()
+        assertEquals(0, loop.consecutiveErrors)
+
+        // Failing all 6 tracks in a row stops retrying safely
+        repeat(5) { assertTrue(loop.onTrackErrorShouldRetry()) }
+        assertFalse(loop.onTrackErrorShouldRetry())
+    }
+
+    @Test
+    fun `viewModel soundtrack pauses on background onStop and AdSlot and persists mute toggle`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val fakeBilling = FakeBillingGateway()
+        val fakeAds = FakeAdsGateway()
+        val viewModel = ComicViewModel(app)
+        viewModel.attachMonetizationGatewaysForTest(fakeBilling, fakeAds)
+        var requestedPlaying = false
+        var released = false
+        val fakeController = object : SoundtrackController {
+            override val currentTrackIndex: Int = 0
+            override val isActivelyPlaying: Boolean get() = requestedPlaying
+            override fun updatePlaybackState(shouldBePlaying: Boolean) {
+                requestedPlaying = shouldBePlaying
+            }
+            override fun skipToNextTrack() {}
+            override fun release() {
+                released = true
+            }
+        }
+        viewModel.attachSoundtrackControllerForTest(fakeController)
+
+        // Splash is active -> music stays silent until dismissed
+        assertTrue(viewModel.uiState.value.isMusicEnabled)
+        assertFalse(requestedPlaying)
+
+        // Dismiss splash -> soundtrack starts playing softly in foreground
+        viewModel.dismissSplash(openReaderDirectly = false)
+        assertTrue(requestedPlaying)
+
+        // App moves to background (onStop) -> soundtrack pauses immediately; resumes on onStart
+        viewModel.onAppForegroundStateChanged(false)
+        assertFalse(requestedPlaying)
+        viewModel.onAppForegroundStateChanged(true)
+        assertTrue(requestedPlaying)
+
+        // Sponsor ad break -> pauses soundtrack until ad dismissed
+        viewModel.startRewardedAdUnlock()
+        assertFalse(requestedPlaying)
+        fakeAds.finishRewarded(AdShowResult.ClosedWithoutReward)
+        assertTrue(requestedPlaying)
+
+        // Toggle off -> pauses playback and persists in SharedPreferences
+        viewModel.toggleMusicEnabled(showToast = false)
+        assertFalse(viewModel.uiState.value.isMusicEnabled)
+        assertFalse(requestedPlaying)
+
+        val freshRepo = ComicRepository(app)
+        assertFalse(freshRepo.isMusicEnabled.value)
+
+        // Restore toggle on cleanly
+        viewModel.setMusicEnabled(true)
+        assertTrue(requestedPlaying)
+        assertFalse(released)
+    }
+
+    @Test
+    fun `library and reader music toggle buttons switch soundtrack preference cleanly`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = ComicViewModel(app)
+        viewModel.setLanguage(AppLanguage.RUSSIAN)
+        viewModel.setMusicEnabled(true)
+        viewModel.clearSnackbar()
+        viewModel.dismissSplash(openReaderDirectly = false)
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                ComicAppContent(viewModel = viewModel)
+            }
+        }
+
+        // Open Story #1 via Featured card and toggle music OFF in Reader HUD
+        composeTestRule.onNodeWithTag("library_lazy_column")
+            .performScrollToNode(hasTestTag("featured_read_btn"))
+        composeTestRule.onNodeWithTag("featured_read_btn").performClick()
+
+        composeTestRule.onNodeWithTag("reader_music_toggle").assertIsDisplayed().performClick()
+        assertFalse(viewModel.uiState.value.isMusicEnabled)
+
+        // Return to Library and toggle music back ON from Library header
+        composeTestRule.onNodeWithTag("reader_back_button").performClick()
+        composeTestRule.onNodeWithTag("library_music_toggle").assertIsDisplayed().performClick()
+        assertTrue(viewModel.uiState.value.isMusicEnabled)
+    }
+
+    @Test
+    fun `entitlementStore encrypts unlocks with AES-GCM, scrubs legacy plaintext flags, and fails closed on tampering`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("test_encrypted_entitlements", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean("premium_unlocked", true)
+            .putBoolean("series_unlocked", true)
+            .putInt("ad_unlocked_max_story", 20)
+            .commit()
+
+        val store = EntitlementStore(prefs)
+        // Legacy plaintext PRO/Series flags must NOT automatically unlock elevated privileges
+        val initial = store.load()
+        assertFalse(initial.isPremiumUnlocked)
+        assertFalse(initial.seriesUnlocked)
+        assertEquals(20, initial.adUnlockedMaxStory)
+        assertFalse(prefs.contains("premium_unlocked"))
+        assertFalse(prefs.contains("series_unlocked"))
+
+        // Verified save persists cleanly across reloads
+        assertTrue(store.save(EntitlementSnapshot(isPremiumUnlocked = true, seriesUnlocked = true, adUnlockedMaxStory = 35)))
+        val reloaded = store.load()
+        assertTrue(reloaded.isPremiumUnlocked)
+        assertTrue(reloaded.seriesUnlocked)
+        assertEquals(35, reloaded.adUnlockedMaxStory)
+
+        // Corrupting ciphertext breaks GCM authentication tag and fails strictly closed
+        val storedCipher = prefs.getString(EntitlementStore.KEY_ENCRYPTED_ENTITLEMENTS, "")!!
+        val tampered = storedCipher.dropLast(4) + "AAAA"
+        prefs.edit().putString(EntitlementStore.KEY_ENCRYPTED_ENTITLEMENTS, tampered).commit()
+
+        val afterTamper = store.load()
+        assertFalse(afterTamper.isPremiumUnlocked)
+        assertFalse(afterTamper.seriesUnlocked)
+        assertEquals(EntitlementSnapshot.DEFAULT_FREE_MAX_STORY, afterTamper.adUnlockedMaxStory)
+    }
+
+    @Test
+    fun `billing restore reconciles Play owned SKUs and revokes unowned privileges while Paywall shows store prices`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val fakeBilling = FakeBillingGateway()
+        val fakeAds = FakeAdsGateway()
+        val viewModel = ComicViewModel(app)
+        viewModel.attachMonetizationGatewaysForTest(fakeBilling, fakeAds)
+        viewModel.setLanguage(AppLanguage.ENGLISH)
+
+        // Store localized prices flow into UiState & PaywallDialog
+        fakeBilling.emitPrices(StoreProductPrices(proFormattedPrice = "€4.99", seriesFormattedPrice = "€0.99"))
+        viewModel.restorePurchases()
+        fakeBilling.emitEvent(BillingEvent.RestoredPurchases(setOf(SkuCatalog.SKU_PRO_LIFETIME), userInitiated = true))
+        assertTrue(viewModel.uiState.value.isPremiumUnlocked)
+        assertEquals("€4.99", viewModel.uiState.value.proPriceLabel)
+
+        // Authoritative restore returning empty (e.g., refunded purchase) revokes PRO safely
+        fakeBilling.emitEvent(BillingEvent.RestoredPurchases(emptySet(), userInitiated = false))
+        assertFalse(viewModel.uiState.value.isPremiumUnlocked)
+
+        composeTestRule.setContent {
+            CyberComicsTheme {
+                PaywallDialog(
+                    currentLanguage = AppLanguage.ENGLISH,
+                    seriesUnlocked = false,
+                    adUnlockedMaxStory = 10,
+                    totalStoriesCount = 50,
+                    proPriceLabel = "€4.99",
+                    seriesPriceLabel = "€0.99",
+                    isBusy = false,
+                    statusMessage = "Payment pending",
+                    onBuyPro = {},
+                    onBuySeries = {},
+                    onWatchAd = {},
+                    onRestore = {},
+                    onDismiss = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("€4.99").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("paywall_status_banner").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("paywall_buy_series_button").performScrollTo().assertIsDisplayed()
+    }
+
+    private class FakeBillingGateway : BillingGateway {
+        private val _productPrices = MutableStateFlow(StoreProductPrices())
+        override val productPrices: StateFlow<StoreProductPrices> = _productPrices.asStateFlow()
+
+        private val _isReady = MutableStateFlow(true)
+        override val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+
+        private val _events = MutableSharedFlow<BillingEvent>(extraBufferCapacity = 16)
+        override val events: SharedFlow<BillingEvent> = _events.asSharedFlow()
+
+        var lastLaunchedSku: String? = null
+
+        override fun connect() {}
+        override fun queryOwnedPurchases(userInitiated: Boolean) {}
+        override fun launchPurchase(activity: Activity?, sku: String) {
+            lastLaunchedSku = sku
+        }
+        override fun destroy() {}
+
+        fun emitPrices(prices: StoreProductPrices) {
+            _productPrices.value = prices
+        }
+
+        fun emitEvent(event: BillingEvent) {
+            _events.tryEmit(event)
+        }
+    }
+
+    private class FakeAdsGateway : AdsGateway {
+        private val _isRewardedReady = MutableStateFlow(true)
+        override val isRewardedReady: StateFlow<Boolean> = _isRewardedReady.asStateFlow()
+
+        private val _isInterstitialReady = MutableStateFlow(false)
+        override val isInterstitialReady: StateFlow<Boolean> = _isInterstitialReady.asStateFlow()
+
+        private var pendingRewardCallback: ((AdShowResult) -> Unit)? = null
+
+        override fun initialize() {}
+        override fun preloadRewardedAd() {}
+        override fun preloadInterstitialAd() {}
+
+        override fun showRewardedAd(activity: Activity?, onResult: (AdShowResult) -> Unit) {
+            pendingRewardCallback = onResult
+        }
+
+        override fun showInterstitialAd(activity: Activity?, onClosed: () -> Unit) {
+            onClosed()
+        }
+
+        fun finishRewarded(result: AdShowResult) {
+            val cb = pendingRewardCallback
+            pendingRewardCallback = null
+            cb?.invoke(result)
+        }
     }
 }

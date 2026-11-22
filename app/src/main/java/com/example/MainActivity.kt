@@ -1,5 +1,8 @@
 package com.example
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,11 +17,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.ComicBook
 import com.example.ui.ComicViewModel
 import com.example.ui.library.ComicLibraryScreen
-import com.example.ui.monetization.AdSlotOverlayDialog
+import com.example.ui.monetization.AdLoadingOverlayDialog
 import com.example.ui.monetization.PaywallDialog
 import com.example.ui.parchment.ParchmentStoryDialog
 import com.example.ui.reader.ComicLoreSheet
@@ -40,6 +46,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                viewModel.onAppForegroundStateChanged(true)
+            }
+
+            override fun onStop(owner: LifecycleOwner) {
+                viewModel.onAppForegroundStateChanged(false)
+            }
+        })
+
         setContent {
             CyberComicsTheme {
                 Surface(
@@ -59,12 +75,13 @@ class MainActivity : ComponentActivity() {
  * 2. Fullscreen [ComicReaderScreen] (`uiState.activeComic != null`)
  * 3. Home [ComicLibraryScreen] (`uiState.activeComic == null`)
  *
- * Monetization dialogs ([PaywallDialog] and [AdSlotOverlayDialog]) remain scoped at this root level
+ * Monetization dialogs ([PaywallDialog] and [AdLoadingOverlayDialog]) remain scoped at this root level
  * so users can unlock locked next/picked stories seamlessly without leaving or tearing down the reader.
  */
 @Composable
 fun ComicAppContent(viewModel: ComicViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hostActivity = LocalContext.current.findActivity()
     var sequenceModalComic by remember { mutableStateOf<ComicBook?>(null) }
 
     // Instant launch splash screen showing Hodja preaching from top of minaret
@@ -102,6 +119,7 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 controlsVisible = uiState.isFullscreenControlsVisible,
                 isThumbnailDrawerOpen = uiState.isThumbnailDrawerOpen,
                 showSpeechBubbles = uiState.showSpeechBubbles,
+                isMusicEnabled = uiState.isMusicEnabled,
                 onPageChanged = { newPage ->
                     viewModel.setCurrentPage(newPage)
                 },
@@ -113,6 +131,9 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 },
                 onToggleSpeechBubbles = {
                     viewModel.toggleSpeechBubbles()
+                },
+                onToggleMusic = {
+                    viewModel.toggleMusicEnabled(showToast = false)
                 },
                 onOpenSequenceManager = {
                     viewModel.toggleSequenceSheet(true)
@@ -127,13 +148,13 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                     viewModel.setReaderBackground(bg)
                 },
                 onSelectComic = { selected ->
-                    viewModel.openComic(selected, 0)
+                    viewModel.openComic(selected, 0, hostActivity)
                 },
                 onPreviousComic = {
-                    viewModel.openPreviousComic()
+                    viewModel.openPreviousComic(hostActivity)
                 },
                 onNextComic = {
-                    viewModel.openNextComic()
+                    viewModel.openNextComic(hostActivity)
                 },
                 onClose = {
                     viewModel.closeComic()
@@ -175,11 +196,15 @@ fun ComicAppContent(viewModel: ComicViewModel) {
             isPremiumUnlocked = uiState.isPremiumUnlocked,
             seriesUnlocked = uiState.seriesUnlocked,
             adUnlockedMaxStory = uiState.adUnlockedMaxStory,
+            isMusicEnabled = uiState.isMusicEnabled,
             isLoading = uiState.isLoading,
             snackbarMessage = uiState.snackbarMessage,
             onClearSnackbar = { viewModel.clearSnackbar() },
             onSelectLanguage = { lang ->
                 viewModel.setLanguage(lang)
+            },
+            onToggleMusic = {
+                viewModel.toggleMusicEnabled(showToast = true)
             },
             onOpenSplash = {
                 viewModel.showSplash()
@@ -188,7 +213,7 @@ fun ComicAppContent(viewModel: ComicViewModel) {
                 viewModel.openPaywall()
             },
             onOpenComic = { comic ->
-                viewModel.openComic(comic)
+                viewModel.openComic(comic, activity = hostActivity)
             },
             onOpenParchment = { comic ->
                 viewModel.openParchment(comic)
@@ -235,7 +260,7 @@ fun ComicAppContent(viewModel: ComicViewModel) {
         )
     }
 
-    // Hybrid Paywall Modal Dialog
+    // Hybrid Paywall Modal Dialog backed by Play Billing & AdMob
     if (uiState.isPaywallOpen) {
         val totalBuiltIn = uiState.comics.count { it.isBuiltIn }.coerceAtLeast(50)
         PaywallDialog(
@@ -243,22 +268,29 @@ fun ComicAppContent(viewModel: ComicViewModel) {
             seriesUnlocked = uiState.seriesUnlocked,
             adUnlockedMaxStory = uiState.adUnlockedMaxStory,
             totalStoriesCount = totalBuiltIn,
-            onBuyPro = { viewModel.buyFullVersion() },
-            onBuySeries = { viewModel.buySeriesPack() },
-            onWatchAd = { viewModel.startRewardedAdUnlock() },
+            proPriceLabel = uiState.proPriceLabel,
+            seriesPriceLabel = uiState.seriesPriceLabel,
+            isBusy = uiState.isBillingBusy,
+            statusMessage = uiState.paywallStatusMessage,
+            onBuyPro = { viewModel.buyFullVersion(hostActivity) },
+            onBuySeries = { viewModel.buySeriesPack(hostActivity) },
+            onWatchAd = { viewModel.startRewardedAdUnlock(hostActivity) },
             onRestore = { viewModel.restorePurchases() },
             onDismiss = { viewModel.closePaywall() }
         )
     }
 
-    // Rewarded / Interstitial Ad Slot Overlay
-    if (uiState.isAdSlotOpen) {
-        AdSlotOverlayDialog(
+    // Loading scrim shown only while Mobile Ads SDK prepares/presents native full-screen ad
+    if (uiState.isAdLoading) {
+        AdLoadingOverlayDialog(
             currentLanguage = uiState.currentLanguage,
-            isRewarded = uiState.isRewardedAdMode,
-            onComplete = { viewModel.completeAdSlot() },
-            onUpgradePro = { viewModel.buyFullVersion() },
             onDismiss = { viewModel.dismissAdSlot() }
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

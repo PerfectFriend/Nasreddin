@@ -8,6 +8,9 @@ import com.example.model.AppLanguage
 import com.example.model.ComicBook
 import com.example.model.ComicPage
 import com.example.model.PanelCrop
+import com.example.monetization.SkuCatalog
+import com.example.security.EntitlementSnapshot
+import com.example.security.EntitlementStore
 import com.example.util.AppStrings
 import com.example.util.StoryBubbleComposer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,23 +30,29 @@ import java.util.Locale
  *    - Story #1 uses a themed localized Eastern cover plus 3 full-page comic scenes (4 pages).
  *    - Stories #2..#10 prepend a localized Eastern cover page and split each 2x2 comic sheet into 4 panel pages (5 pages).
  *    - Stories #11..#50 prepend a localized Eastern cover page paired with unique bespoke 4-panel scenes and dynamic localized bubbles (5 pages).
+ * 3. Entitlements persist via Keystore AES-256-GCM [EntitlementStore] and reconcile with Play Billing on launch.
  */
 class ComicRepository(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cyber_comics_prefs", Context.MODE_PRIVATE)
+    private val entitlementStore = EntitlementStore(prefs)
+    private val initialEntitlements = entitlementStore.load()
 
     private val _currentLanguage = MutableStateFlow(detectInitialLanguage())
     val currentLanguage: StateFlow<AppLanguage> = _currentLanguage.asStateFlow()
 
-    private val _isPremiumUnlocked = MutableStateFlow(prefs.getBoolean(KEY_PREMIUM_UNLOCKED, false))
+    private val _isPremiumUnlocked = MutableStateFlow(initialEntitlements.isPremiumUnlocked)
     val isPremiumUnlocked: StateFlow<Boolean> = _isPremiumUnlocked.asStateFlow()
 
-    private val _seriesUnlocked = MutableStateFlow(prefs.getBoolean(KEY_SERIES_UNLOCKED, false))
+    private val _seriesUnlocked = MutableStateFlow(initialEntitlements.seriesUnlocked)
     val seriesUnlocked: StateFlow<Boolean> = _seriesUnlocked.asStateFlow()
 
-    private val _adUnlockedMaxStory = MutableStateFlow(prefs.getInt(KEY_AD_UNLOCKED_MAX_STORY, 10))
+    private val _adUnlockedMaxStory = MutableStateFlow(initialEntitlements.adUnlockedMaxStory)
     val adUnlockedMaxStory: StateFlow<Int> = _adUnlockedMaxStory.asStateFlow()
+
+    private val _isMusicEnabled = MutableStateFlow(prefs.getBoolean(KEY_MUSIC_ENABLED, true))
+    val isMusicEnabled: StateFlow<Boolean> = _isMusicEnabled.asStateFlow()
 
     private val _comics = MutableStateFlow<List<ComicBook>>(emptyList())
     val comics: StateFlow<List<ComicBook>> = _comics.asStateFlow()
@@ -87,25 +96,40 @@ class ComicRepository(private val context: Context) {
         loadAllComics()
     }
 
-    fun unlockPremium(): Boolean {
+    fun setMusicEnabled(enabled: Boolean) {
+        _isMusicEnabled.value = enabled
+        prefs.edit().putBoolean(KEY_MUSIC_ENABLED, enabled).apply()
+    }
+
+    private fun persistEntitlements() {
+        entitlementStore.save(
+            EntitlementSnapshot(
+                isPremiumUnlocked = _isPremiumUnlocked.value,
+                seriesUnlocked = _seriesUnlocked.value,
+                adUnlockedMaxStory = _adUnlockedMaxStory.value
+            )
+        )
+    }
+
+    internal fun unlockPremium(): Boolean {
         _isPremiumUnlocked.value = true
-        prefs.edit().putBoolean(KEY_PREMIUM_UNLOCKED, true).apply()
+        persistEntitlements()
         loadAllComics()
         return true
     }
 
-    fun unlockSeriesPack(): Boolean {
+    internal fun unlockSeriesPack(): Boolean {
         _seriesUnlocked.value = true
-        prefs.edit().putBoolean(KEY_SERIES_UNLOCKED, true).apply()
+        persistEntitlements()
         loadAllComics()
         return true
     }
 
-    fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int? = null): Int {
+    internal fun unlockNextAdBatch(batchSize: Int = 5, maxStory: Int? = null): Int {
         val catalogMax = maxStory ?: (_comics.value.filter { it.isBuiltIn }.maxOfOrNull { it.storyNumber } ?: 50)
         val nextMax = (_adUnlockedMaxStory.value + batchSize).coerceAtMost(catalogMax)
         _adUnlockedMaxStory.value = nextMax
-        prefs.edit().putInt(KEY_AD_UNLOCKED_MAX_STORY, nextMax).apply()
+        persistEntitlements()
         return nextMax
     }
 
@@ -116,16 +140,25 @@ class ComicRepository(private val context: Context) {
             comic.storyNumber <= _adUnlockedMaxStory.value
     }
 
-    fun restorePurchases(): Boolean {
-        val wasPremium = prefs.getBoolean(KEY_PREMIUM_UNLOCKED, false)
-        val wasSeries = prefs.getBoolean(KEY_SERIES_UNLOCKED, false)
-        if (wasPremium || wasSeries) {
-            _isPremiumUnlocked.value = wasPremium
-            _seriesUnlocked.value = wasSeries
+    /**
+     * Reconciles local encrypted entitlements against verified Play Billing owned SKUs.
+     * Grants newly owned SKUs and revokes refunded/stale PRO or Series flags if Billing confirms
+     * empty ownership during live Store reconciliation.
+     */
+    fun reconcilePlayEntitlements(ownedSkus: Set<String>, authoritativelySynced: Boolean = true): Boolean {
+        val hasPro = SkuCatalog.SKU_PRO_LIFETIME in ownedSkus
+        val hasSeries = SkuCatalog.SKU_SERIES_VOLUME1 in ownedSkus
+        val nextPro = if (authoritativelySynced) hasPro else (_isPremiumUnlocked.value || hasPro)
+        val nextSeries = if (authoritativelySynced) hasSeries else (_seriesUnlocked.value || hasSeries)
+
+        val changed = nextPro != _isPremiumUnlocked.value || nextSeries != _seriesUnlocked.value
+        _isPremiumUnlocked.value = nextPro
+        _seriesUnlocked.value = nextSeries
+        if (changed || hasPro || hasSeries) {
+            persistEntitlements()
             loadAllComics()
-            return true
         }
-        return false
+        return nextPro || nextSeries
     }
 
     /**
@@ -691,9 +724,7 @@ class ComicRepository(private val context: Context) {
         const val BUILT_IN_EN_ID = "builtin_sermon_in_mosque_en"
         private const val KEY_CUSTOM_COMICS = "custom_comics_json"
         private const val KEY_SAVED_LANG = "saved_app_language"
-        private const val KEY_PREMIUM_UNLOCKED = "premium_unlocked"
-        private const val KEY_SERIES_UNLOCKED = "series_unlocked"
-        private const val KEY_AD_UNLOCKED_MAX_STORY = "ad_unlocked_max_story"
+        private const val KEY_MUSIC_ENABLED = "music_enabled"
 
         private val BESPOKE_STORY_DRAWABLES: Map<Int, Int> = mapOf(
             11 to R.drawable.img_story_011,

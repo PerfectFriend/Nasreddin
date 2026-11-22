@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -52,7 +54,9 @@ import com.example.util.AppStrings
 @Composable
 internal fun LibraryTopHeader(
     currentLanguage: AppLanguage,
+    isMusicEnabled: Boolean = true,
     onOpenLanguageMenu: () -> Unit,
+    onToggleMusic: () -> Unit = {},
     onOpenSplash: () -> Unit,
     onPickFolder: () -> Unit,
     onPickFiles: () -> Unit
@@ -65,7 +69,7 @@ internal fun LibraryTopHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -98,7 +102,9 @@ internal fun LibraryTopHeader(
                 Text(
                     text = AppStrings.appSubtitle(currentLanguage),
                     style = MaterialTheme.typography.bodySmall,
-                    color = CyberNeonCyan
+                    color = CyberNeonCyan,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -109,11 +115,11 @@ internal fun LibraryTopHeader(
                     border = BorderStroke(1.dp, VanGoghStarGold.copy(alpha = 0.6f)),
                     modifier = Modifier
                         .clickable { onOpenLanguageMenu() }
-                        .padding(end = 4.dp)
+                        .padding(end = 2.dp)
                         .testTag("library_lang_btn")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -130,6 +136,17 @@ internal fun LibraryTopHeader(
                             fontSize = 12.sp
                         )
                     }
+                }
+
+                IconButton(
+                    onClick = onToggleMusic,
+                    modifier = Modifier.testTag("library_music_toggle")
+                ) {
+                    Icon(
+                        imageVector = if (isMusicEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                        contentDescription = AppStrings.musicToggleTooltip(currentLanguage, isMusicEnabled),
+                        tint = if (isMusicEnabled) VanGoghStarGold else Color.White.copy(alpha = 0.55f)
+                    )
                 }
 
                 IconButton(

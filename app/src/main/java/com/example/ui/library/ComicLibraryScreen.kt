@@ -86,10 +86,12 @@ fun ComicLibraryScreen(
     isPremiumUnlocked: Boolean,
     seriesUnlocked: Boolean,
     adUnlockedMaxStory: Int,
+    isMusicEnabled: Boolean = true,
     isLoading: Boolean,
     snackbarMessage: String?,
     onClearSnackbar: () -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
+    onToggleMusic: () -> Unit = {},
     onOpenSplash: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenComic: (ComicBook) -> Unit,
@@ -170,7 +172,9 @@ fun ComicLibraryScreen(
                 item {
                     LibraryTopHeader(
                         currentLanguage = currentLanguage,
+                        isMusicEnabled = isMusicEnabled,
                         onOpenLanguageMenu = { langMenuExpanded = !langMenuExpanded },
+                        onToggleMusic = onToggleMusic,
                         onOpenSplash = onOpenSplash,
                         onPickFolder = { folderPickerLauncher.launch(null) },
                         onPickFiles = { filesPickerLauncher.launch("image/*") }

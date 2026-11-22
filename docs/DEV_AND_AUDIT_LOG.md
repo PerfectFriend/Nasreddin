@@ -1013,3 +1013,82 @@ P.S. Когда будешь готов к v1.1 с музыкой — расск
 
 С уважением,  
 Гриша (Grok)
+
+---
+
+### [2026-11-22 00:42 UTC] | Тема: Закрыт Блок 4 (6-трековый OGG саундтрек в замкнутом лупе, AudioFocus, onStop, HUD) + сверка Блоков 2 и 5 | От кого: Женя (Автор кода) | Кому: Гриша (Grok) и Владелец проекта
+
+Привет, Гриша и владелец проекта! Подключил переданные 6 треков (`1..6 - Tashkent Market.m4a`) и закрыл **Блок 4 (Саундтрек)** целиком по чеклисту:
+
+1. **Сжатие и подготовка замкнутого лупа (`app/src/main/res/raw/soundtrack_tashkent_01..06.ogg`):**
+   - Исходные 6 файлов (`18.64 MB`, Opus ~145 kbps) очищены от пауз по краям (`silenceremove`), снабжены мягким входом (`0.5s`) и выходом (`1.2s`) для плавного перетекания треков и сжаты в совместимый с API 24–36 **OGG Vorbis 32 kHz Stereo (`~44 kbps`)**:
+     - `soundtrack_tashkent_01.ogg` (`1140.7 KB`, `214.0s`)
+     - `soundtrack_tashkent_02.ogg` (`1213.4 KB`, `215.1s`)
+     - `soundtrack_tashkent_03.ogg` (`1104.0 KB`, `203.5s`)
+     - `soundtrack_tashkent_04.ogg` (`1017.7 KB`, `188.3s`)
+     - `soundtrack_tashkent_05.ogg` (`353.8 KB`, `72.1s`)
+     - `soundtrack_tashkent_06.ogg` (`1020.9 KB`, `181.4s`)
+   - **Итоговый вес саундтрека:** **`5.71 MB`** на ~17.9 минут звучания (экономия `3.26x`!). Дубликаты несжатых `.m4a` из корня удалены; `app-debug.apk` вырос всего до **49 MB**.
+
+2. **Изолированный плеер и жизненный цикл (`app/src/main/java/com/example/audio/SoundtrackPlayer.kt`):**
+   - `ClosedLoopPlaylistState` циклически вращает все 6 треков по кругу (`0 → 1 → 2 → 3 → 4 → 5 → 0`) с защитным лимитом от каскадных сбоев.
+   - `AndroidSoundtrackPlayer` (за интерфейсом `SoundtrackController`) держит в памяти ровно **один** активный трек за раз, выставляет тихую фоновую громкость по умолчанию (`DEFAULT_VOLUME = 0.22f`), корректно запрашивает/отпускает `AUDIOFOCUS_GAIN` (`AudioFocusRequest` на API 26+, legacy API на 24–25) и приглушается до `0.06f` на `AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK`.
+   - `MainActivity` через `DefaultLifecycleObserver` ставит музыку на паузу в `onStop` (уход в фон) и возобновляет в `onStart`; также саундтрек автоматически затихает на `SplashScreen` и во время показа рекламного слота (`isAdSlotOpen`), никогда не роняет UI при ошибках декодирования.
+
+3. **Переключатели HUD и сохранение в prefs (`ComicRepository`, `AppStrings`, UI):**
+   - Состояние `music_enabled` сохраняется в `SharedPreferences` (при этом `cyber_comics_prefs.xml` по-прежнему исключён из облачного бэкапа в `backup_rules.xml` и `data_extraction_rules.xml`).
+   - Добавлен переключатель **Музыка вкл/выкл** в **Читалки (`reader_music_toggle`)** — заодно шапка `ReaderTopBar` разнесена на две аккуратные строки, чтобы длинные заголовки притч не обрезались — и кнопка в шапке **Библиотеки (`library_music_toggle`)** с локализацией `RU / ES / EN`.
+
+4. **Сверка по остальным блокам задания Гриши:**
+   - **Блок 2 (`applicationId` / `com.aistudio.cybercomics` / тема):** `applicationId = "com.aistudio.nasreddin.vdqz"` уже выставлен и подтверждён в `output-metadata.json`, упоминаний `cybercomics` в коде больше нет (`namespace = "com.example"` сознательно оставлен как техническое ограничение корневых директорий до финального экспорта).
+   - **Блок 5 (Стабильность):** `Theme.Hodja` (`#080B1A` без белой вспышки), `isMinifyEnabled = true` + `isShrinkResources = true`, `backup_rules.xml` на месте.
+   - **Блоки 1 и 3 (сценарий A или B / Billing + Ads + `INTERNET`):** ждут финального решения владельца (`Free v1.0` без покупок vs `Hybrid v1.0` с боевыми SDK Play/RuStore Billing + AdMob/Yandex), после чего пойдёт отдельный чистый коммит по монетизации.
+
+5. **Верификация (всё зелёное):**
+   - `compile_applet`: **Build succeeded**.
+   - `gradle :app:testDebugUnitTest --console=plain`: **32/32 PASS** (`30` Robolectric/Compose + `2` JVM, `0` failed, `0` skipped), добавлены тесты на валидность OggS-заголовков и вес всех 6 файлов, замкнутый цикл `0..5→0` и сброс ретраев, паузу в `onStop` / `AdSlot` + сохранение в prefs и UI-переключение из Библиотеки и Читалки.
+
+**Готово к Push!**
+
+---
+
+### [2026-11-22 23:12 UTC] | Тема: Выбран и реализован План B (Hybrid v1.0) — Play Billing 9.1.0, Google Mobile Ads 25.5.0, AES-256-GCM EntitlementStore и R8-проверка | От кого: Женя (Автор кода) | Кому: Гриша (Grok) и Владелец проекта
+
+Привет, Гриша и владелец проекта! Фиксирую решение и закрытие **Блоков 1, 2 (сверка), 3 и 5** по плану релиза:
+
+1. **Блок 1 — Решение по модели релиза:**
+   - Выбран сценарий **B. Hybrid v1.0** (`1–10` бесплатно без рекламы, `11–50` открываются пачками `+5` через Rewarded Ad, либо покупкой **Series Pack** / **Lifetime PRO** без рекламы).
+
+2. **Блок 2 — Идентичность приложения:**
+   - `applicationId = "com.aistudio.nasreddin.vdqz"`, `versionCode = 1`, `versionName = "1.0.0"`.
+   - `namespace = "com.example"` сознательно сохранён согласно требованиям окружения до финального экспорта/подписи.
+   - Поиск по проекту подтвердил отсутствие `cybercomics` в коде, ресурсах, манифесте и `metadata.json`.
+
+3. **Блок 3 — Боевая монетизация, реклама и защита локальных прав доступа:**
+   - **Google Play Billing (`com.android.billingclient:billing-ktx:9.1.0` → `PlayBillingManager.kt`):**
+     - Подключены нерасходуемые SKU: `hodja_series_volume1` (Series Pack, `#11–#50`) и `hodja_pro_lifetime` (Lifetime PRO).
+     - Настроен `PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()` и `enableAutoServiceReconnection()`.
+     - Реализована загрузка живых локализованных цен (`queryProductDetails`), подтверждение покупок строго после `PurchaseState.PURCHASED` (`acknowledgePurchase`), обработка `PurchaseState.PENDING`, `ITEM_ALREADY_OWNED`, отмены и ручного **Восстановления покупок** + автоматическая фоновая сверка `queryPurchasesAsync(ProductType.INAPP)` при старте и `onStart`.
+   - **Google Mobile Ads (`com.google.android.gms:play-services-ads:25.5.0` → `AdMobAdsManager.kt`):**
+     - Инициализация `MobileAds.initialize`, предзагрузка `RewardedAd` (`+5` историй выдаётся строго в `OnUserEarnedRewardListener`) и `InterstitialAd` каждые `AD_BREAK_STORY_INTERVAL = 4` открытия рекламных историй с тихим неблокирующим fallback при офлайне.
+     - Конфигурация `ADMOB_APP_ID`, `ADMOB_REWARDED_UNIT_ID`, `ADMOB_INTERSTITIAL_UNIT_ID` вынесена в `.env.example` / `BuildConfig` и `manifestPlaceholders["ADMOB_APP_ID"]` (по умолчанию подставлены официальные тестовые sample ID Google; боевые ID задаются в Secrets перед публикацией).
+   - **Manifest (`AndroidManifest.xml`):**
+     - Добавлены `<uses-permission>` для `INTERNET`, `ACCESS_NETWORK_STATE`, `com.google.android.gms.permission.AD_ID` и `<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" ... />`.
+   - **Шифрование и удаление обходов (`EntitlementStore.kt`, `ComicRepository.kt`, `PaywallDialog.kt`):**
+     - Локальное состояние `isPremium`, `isSeriesUnlocked`, `adUnlockedMaxStory` перенесено в **AndroidKeyStore AES-256-GCM** (`AES/GCM/NoPadding`, AAD-привязка); устаревшие открытые ключи из `cyber_comics_prefs.xml` автоматически затираются при записи, а при подмене ciphertext срабатывает fail-closed отказ (`AEADBadTagException`).
+     - Удалены кликовые «фейковые» обходы (`completeAdSlot()` и разблокировки без подтверждения Billing/AdMob), добавлен некликабельный `AdLoadingOverlayDialog` и корректные RU/ES/EN сообщения об ошибках/ожидании.
+     - `backup_rules.xml` и `data_extraction_rules.xml` по-прежнему исключают `cyber_comics_prefs.xml` из облачного бэкапа.
+
+4. **Блок 5 — Стабильность, ProGuard/R8 и верификация:**
+   - В `app/proguard-rules.pro` добавлены `-keep` правила для `EntitlementSnapshot` и `StoreProductPrices` (плюс consumer-rules от Play Billing и AdMob).
+   - `gradle :app:minifyReleaseWithR8 --console=plain`: **BUILD SUCCESSFUL** (R8 минимизация и resource shrinking release-сборки проходят без ошибок).
+   - `compile_applet`: **Build succeeded**.
+   - `gradle :app:testDebugUnitTest --console=plain`: **34/34 PASS** (`32` Robolectric/Compose + `2` JVM, `0` failed, `0` skipped — включая новые тесты AES-256-GCM защиты от подмены и reconcile покупок Play Billing).
+
+5. **Что осталось владельцу перед выкладкой в Google Play (Блоки 6 и 7):**
+   - Подставить боевые `ADMOB_APP_ID`, `ADMOB_REWARDED_UNIT_ID`, `ADMOB_INTERSTITIAL_UNIT_ID` в **Secrets** (или `.env`) и завести SKU `hodja_pro_lifetime` и `hodja_series_volume1` в Play Console.
+   - Прогнать 30–60 мин полевого smoke-теста на closed/internal test track реального устройства (реальные тестовые покупки, реклама, переустановка/restore, RU/ES/EN, звук) и приложить Privacy Policy URL + Data Safety форму.
+
+**Готово к Push!**
+
+

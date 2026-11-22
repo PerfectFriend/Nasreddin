@@ -50,6 +50,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.ViewStream
@@ -122,10 +124,12 @@ fun ComicReaderScreen(
     controlsVisible: Boolean,
     isThumbnailDrawerOpen: Boolean,
     showSpeechBubbles: Boolean,
+    isMusicEnabled: Boolean = true,
     onPageChanged: (Int) -> Unit,
     onToggleControls: () -> Unit,
     onToggleThumbnails: (Boolean) -> Unit,
     onToggleSpeechBubbles: () -> Unit,
+    onToggleMusic: () -> Unit = {},
     onOpenSequenceManager: () -> Unit,
     onOpenLore: () -> Unit,
     onChangeReadingMode: (ReadingMode) -> Unit,
@@ -279,7 +283,9 @@ fun ComicReaderScreen(
                 readingMode = readingMode,
                 hasDynamicBubbles = comic.pages.any { it.bubbles.isNotEmpty() },
                 showSpeechBubbles = showSpeechBubbles,
+                isMusicEnabled = isMusicEnabled,
                 onBack = onClose,
+                onToggleMusic = onToggleMusic,
                 onToggleSpeechBubbles = onToggleSpeechBubbles,
                 onOpenLore = onOpenLore,
                 onOpenSequence = onOpenSequenceManager,
@@ -926,7 +932,9 @@ private fun ReaderTopBar(
     readingMode: ReadingMode,
     hasDynamicBubbles: Boolean,
     showSpeechBubbles: Boolean,
+    isMusicEnabled: Boolean,
     onBack: () -> Unit,
+    onToggleMusic: () -> Unit,
     onToggleSpeechBubbles: () -> Unit,
     onOpenLore: () -> Unit,
     onOpenSequence: () -> Unit,
@@ -939,112 +947,157 @@ private fun ReaderTopBar(
         shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.testTag("reader_back_button")
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = AppStrings.backToLibrary(currentLanguage),
-                    tint = Color.White
-                )
-            }
-
-            Column(
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 6.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = AppStrings.pageCounter(currentLanguage, currentPage, totalPages),
-                    color = CyberNeonCyan,
-                    fontSize = 11.sp
-                )
-            }
-
-            // Dynamic Speech Bubble Toggle (shown when story uses universal dynamic bubble templates)
-            if (hasDynamicBubbles) {
                 IconButton(
-                    onClick = onToggleSpeechBubbles,
-                    modifier = Modifier.testTag("reader_bubbles_toggle")
+                    onClick = onBack,
+                    modifier = Modifier.testTag("reader_back_button")
                 ) {
                     Icon(
-                        imageVector = if (showSpeechBubbles) Icons.Default.ChatBubble else Icons.Default.ChatBubbleOutline,
-                        contentDescription = AppStrings.speechBubblesTooltip(currentLanguage),
-                        tint = if (showSpeechBubbles) CyberNeonCyan else Color.White.copy(alpha = 0.6f)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = AppStrings.backToLibrary(currentLanguage),
+                        tint = Color.White
                     )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = AppStrings.pageCounter(currentLanguage, currentPage, totalPages),
+                        color = CyberNeonCyan,
+                        fontSize = 11.sp
+                    )
+                }
+
+                // Soundtrack ON/OFF toggle pill in Reader HUD
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isMusicEnabled) VanGoghStarGold.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isMusicEnabled) VanGoghStarGold.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onToggleMusic() }
+                        .testTag("reader_music_toggle")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isMusicEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                            contentDescription = AppStrings.musicToggleTooltip(currentLanguage, isMusicEnabled),
+                            tint = if (isMusicEnabled) VanGoghStarGold else Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = AppStrings.musicShortLabel(currentLanguage, isMusicEnabled),
+                            color = if (isMusicEnabled) VanGoghStarGold else Color.White.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
 
-            // Lore / Sermon Text Button
-            IconButton(
-                onClick = onOpenLore,
-                modifier = Modifier.testTag("reader_lore_button")
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = AppStrings.sermonTextTooltip(currentLanguage),
-                    tint = VanGoghStarGold
-                )
-            }
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
-            // Sequence Manager Button
-            IconButton(
-                onClick = onOpenSequence,
-                modifier = Modifier.testTag("reader_sequence_button")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.FormatListNumbered,
-                    contentDescription = AppStrings.pageSequenceTooltip(currentLanguage),
-                    tint = CyberNeonCyan
-                )
-            }
+                if (hasDynamicBubbles) {
+                    IconButton(
+                        onClick = onToggleSpeechBubbles,
+                        modifier = Modifier.testTag("reader_bubbles_toggle")
+                    ) {
+                        Icon(
+                            imageVector = if (showSpeechBubbles) Icons.Default.ChatBubble else Icons.Default.ChatBubbleOutline,
+                            contentDescription = AppStrings.speechBubblesTooltip(currentLanguage),
+                            tint = if (showSpeechBubbles) CyberNeonCyan else Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+                }
 
-            // Reading mode toggle (Pager vs Scroll)
-            IconButton(
-                onClick = onToggleReadingMode,
-                modifier = Modifier.testTag("reader_mode_button")
-            ) {
-                Icon(
-                    imageVector = if (readingMode == ReadingMode.HORIZONTAL_PAGER) {
-                        Icons.Default.ViewStream
-                    } else {
-                        Icons.Default.ViewCarousel
-                    },
-                    contentDescription = if (readingMode == ReadingMode.HORIZONTAL_PAGER) {
-                        AppStrings.switchToScrollTooltip(currentLanguage)
-                    } else {
-                        AppStrings.switchToPagerTooltip(currentLanguage)
-                    },
-                    tint = Color.White
-                )
-            }
+                IconButton(
+                    onClick = onOpenLore,
+                    modifier = Modifier.testTag("reader_lore_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = AppStrings.sermonTextTooltip(currentLanguage),
+                        tint = VanGoghStarGold
+                    )
+                }
 
-            // Background Theme Menu
-            IconButton(
-                onClick = onOpenBackgroundMenu,
-                modifier = Modifier.testTag("reader_bg_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Palette,
-                    contentDescription = AppStrings.readerBackgroundTooltip(currentLanguage),
-                    tint = Color.White
-                )
+                IconButton(
+                    onClick = onOpenSequence,
+                    modifier = Modifier.testTag("reader_sequence_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FormatListNumbered,
+                        contentDescription = AppStrings.pageSequenceTooltip(currentLanguage),
+                        tint = CyberNeonCyan
+                    )
+                }
+
+                IconButton(
+                    onClick = onToggleReadingMode,
+                    modifier = Modifier.testTag("reader_mode_button")
+                ) {
+                    Icon(
+                        imageVector = if (readingMode == ReadingMode.HORIZONTAL_PAGER) {
+                            Icons.Default.ViewStream
+                        } else {
+                            Icons.Default.ViewCarousel
+                        },
+                        contentDescription = if (readingMode == ReadingMode.HORIZONTAL_PAGER) {
+                            AppStrings.switchToScrollTooltip(currentLanguage)
+                        } else {
+                            AppStrings.switchToPagerTooltip(currentLanguage)
+                        },
+                        tint = Color.White
+                    )
+                }
+
+                IconButton(
+                    onClick = onOpenBackgroundMenu,
+                    modifier = Modifier.testTag("reader_bg_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = AppStrings.readerBackgroundTooltip(currentLanguage),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }

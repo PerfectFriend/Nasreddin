@@ -1,19 +1,30 @@
 package com.example.ui
 
+import android.app.Activity
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.audio.AndroidSoundtrackPlayer
+import com.example.audio.SoundtrackController
 import com.example.data.ComicRepository
 import com.example.model.AppLanguage
 import com.example.model.ComicBook
 import com.example.model.ComicPage
 import com.example.model.ReaderBackground
 import com.example.model.ReadingMode
+import com.example.monetization.AdMobAdsManager
+import com.example.monetization.AdShowResult
+import com.example.monetization.AdsGateway
+import com.example.monetization.BillingEvent
+import com.example.monetization.BillingGateway
+import com.example.monetization.PlayBillingManager
+import com.example.monetization.SkuCatalog
 import com.example.util.AlphanumericComparator
 import com.example.util.AppStrings
 import com.example.util.FolderImporter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,9 +37,9 @@ import kotlinx.coroutines.withContext
  *
  * Hybrid access truth table for any [ComicBook]:
  * - `comic.isFree == true` (Stories 1..10) -> always unlocked & ad-free.
- * - `isPremiumUnlocked == true` (PRO $4.99) -> all stories unlocked & zero ads.
- * - `seriesUnlocked == true` ($0.99 pack) -> built-in series (11..50) unlocked & ad-free.
- * - `comic.storyNumber <= adUnlockedMaxStory` -> unlocked free via Rewarded Ad (periodic sponsor breaks apply).
+ * - `isPremiumUnlocked == true` (PRO via Play Billing) -> all stories unlocked & zero ads.
+ * - `seriesUnlocked == true` (Volume 1 Series via Play Billing) -> built-in series (11..50) unlocked & ad-free.
+ * - `comic.storyNumber <= adUnlockedMaxStory` -> unlocked free via verified AdMob Rewarded Ad (periodic interstitial breaks apply).
  */
 data class UiState(
     val comics: List<ComicBook> = emptyList(),
@@ -47,10 +58,16 @@ data class UiState(
     val adUnlockedMaxStory: Int = 10,
     val isAdSlotOpen: Boolean = false,
     val isRewardedAdMode: Boolean = false,
+    val isAdLoading: Boolean = false,
+    val isBillingBusy: Boolean = false,
+    val proPriceLabel: String? = null,
+    val seriesPriceLabel: String? = null,
+    val paywallStatusMessage: String? = null,
     val pendingLockedComic: ComicBook? = null,
     val adSupportedReadsSinceBreak: Int = 0,
     val currentLanguage: AppLanguage = AppLanguage.ENGLISH,
     val showSpeechBubbles: Boolean = true,
+    val isMusicEnabled: Boolean = true,
     val isLoading: Boolean = false,
     val snackbarMessage: String? = null,
     val parchmentComic: ComicBook? = null
@@ -65,12 +82,18 @@ data class UiState(
 
 /**
  * Coordinates library catalog state, fullscreen reader navigation, page sequence persistence,
- * and Hybrid Monetization unlock flows (PRO / Series Pack / Rewarded Ad batches).
+ * and Play Billing / AdMob Hybrid Monetization unlock flows.
  */
 class ComicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ComicRepository(application)
-    private val _uiState = MutableStateFlow(UiState())
+    private var soundtrackController: SoundtrackController = AndroidSoundtrackPlayer(application)
+    private var billingGateway: BillingGateway = PlayBillingManager(application)
+    private var adsGateway: AdsGateway = AdMobAdsManager(application)
+    private var billingObserverJob: Job? = null
+    private var isAppInForeground: Boolean = true
+
+    private val _uiState = MutableStateFlow(UiState(isMusicEnabled = repository.isMusicEnabled.value))
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
@@ -99,6 +122,13 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
+            repository.isMusicEnabled.collect { enabled ->
+                _uiState.update { it.copy(isMusicEnabled = enabled) }
+                syncSoundtrackPlayback()
+            }
+        }
+
+        viewModelScope.launch {
             repository.comics.collect { list ->
                 _uiState.update { state ->
                     val updatedActive = state.activeComic?.let { active ->
@@ -117,6 +147,128 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        observeBillingGateway(billingGateway)
+        billingGateway.connect()
+        adsGateway.initialize()
+    }
+
+    private fun observeBillingGateway(gateway: BillingGateway) {
+        billingObserverJob?.cancel()
+        billingObserverJob = viewModelScope.launch {
+            launch {
+                gateway.productPrices.collect { prices ->
+                    _uiState.update {
+                        it.copy(
+                            proPriceLabel = prices.proFormattedPrice,
+                            seriesPriceLabel = prices.seriesFormattedPrice
+                        )
+                    }
+                }
+            }
+            launch {
+                gateway.events.collect { event ->
+                    handleBillingEvent(event)
+                }
+            }
+        }
+    }
+
+    private fun handleBillingEvent(event: BillingEvent) {
+        val lang = _uiState.value.currentLanguage
+        when (event) {
+            is BillingEvent.PurchaseGranted -> {
+                val pending = _uiState.value.pendingLockedComic
+                val builtInCount = _uiState.value.comics.count { it.isBuiltIn }.coerceAtLeast(50)
+                when (event.sku) {
+                    SkuCatalog.SKU_PRO_LIFETIME -> {
+                        repository.unlockPremium()
+                        _uiState.update {
+                            it.copy(
+                                isPaywallOpen = false,
+                                isAdSlotOpen = false,
+                                isBillingBusy = false,
+                                paywallStatusMessage = null,
+                                isPremiumUnlocked = true,
+                                pendingLockedComic = null,
+                                snackbarMessage = AppStrings.purchaseSuccessMessage(lang)
+                            )
+                        }
+                    }
+                    SkuCatalog.SKU_SERIES_VOLUME1 -> {
+                        repository.unlockSeriesPack()
+                        _uiState.update {
+                            it.copy(
+                                isPaywallOpen = false,
+                                isAdSlotOpen = false,
+                                isBillingBusy = false,
+                                paywallStatusMessage = null,
+                                seriesUnlocked = true,
+                                pendingLockedComic = null,
+                                snackbarMessage = AppStrings.seriesPurchaseSuccessMessage(lang, builtInCount)
+                            )
+                        }
+                    }
+                }
+                if (pending != null) {
+                    openComic(pending, 0)
+                }
+            }
+            is BillingEvent.RestoredPurchases -> {
+                val restored = repository.reconcilePlayEntitlements(
+                    ownedSkus = event.grantedSkus,
+                    authoritativelySynced = true
+                )
+                val pending = _uiState.value.pendingLockedComic
+                _uiState.update { state ->
+                    val statusMsg = when {
+                        restored -> AppStrings.purchaseSuccessMessage(lang)
+                        event.userInitiated -> AppStrings.billingNoPurchasesFound(lang)
+                        else -> state.paywallStatusMessage
+                    }
+                    state.copy(
+                        isBillingBusy = false,
+                        isPaywallOpen = if (restored) false else state.isPaywallOpen,
+                        paywallStatusMessage = if (restored) null else statusMsg,
+                        pendingLockedComic = if (restored) null else state.pendingLockedComic,
+                        snackbarMessage = if (restored || event.userInitiated) statusMsg else state.snackbarMessage
+                    )
+                }
+                if (restored && pending != null) {
+                    openComic(pending, 0)
+                }
+            }
+            BillingEvent.PurchasePending -> {
+                val msg = AppStrings.billingPurchasePending(lang)
+                _uiState.update {
+                    it.copy(
+                        isBillingBusy = false,
+                        paywallStatusMessage = msg,
+                        snackbarMessage = msg
+                    )
+                }
+            }
+            BillingEvent.UserCancelled -> {
+                val msg = AppStrings.billingCancelled(lang)
+                _uiState.update {
+                    it.copy(
+                        isBillingBusy = false,
+                        paywallStatusMessage = msg
+                    )
+                }
+            }
+            is BillingEvent.Error -> {
+                val msg = AppStrings.billingUnavailableError(lang)
+                _uiState.update {
+                    it.copy(
+                        isBillingBusy = false,
+                        paywallStatusMessage = msg,
+                        snackbarMessage = if (!it.isPaywallOpen) msg else it.snackbarMessage
+                    )
+                }
+            }
+        }
+        syncSoundtrackPlayback()
     }
 
     fun setLanguage(language: AppLanguage) {
@@ -124,8 +276,72 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(snackbarMessage = AppStrings.languageSwitchedMessage(language)) }
     }
 
+    fun toggleMusicEnabled(showToast: Boolean = true) {
+        val next = !_uiState.value.isMusicEnabled
+        setMusicEnabled(next, showToast = showToast)
+    }
+
+    fun setMusicEnabled(enabled: Boolean, showToast: Boolean = false) {
+        repository.setMusicEnabled(enabled)
+        _uiState.update { state ->
+            state.copy(
+                isMusicEnabled = enabled,
+                snackbarMessage = if (showToast) {
+                    AppStrings.musicEnabledStatusMessage(state.currentLanguage, enabled)
+                } else {
+                    state.snackbarMessage
+                }
+            )
+        }
+        syncSoundtrackPlayback()
+    }
+
+    fun onAppForegroundStateChanged(inForeground: Boolean) {
+        isAppInForeground = inForeground
+        if (inForeground) {
+            billingGateway.queryOwnedPurchases(userInitiated = false)
+        }
+        syncSoundtrackPlayback()
+    }
+
+    internal fun attachSoundtrackControllerForTest(controller: SoundtrackController) {
+        soundtrackController.release()
+        soundtrackController = controller
+        syncSoundtrackPlayback()
+    }
+
+    internal fun attachMonetizationGatewaysForTest(
+        billing: BillingGateway,
+        ads: AdsGateway
+    ) {
+        billingObserverJob?.cancel()
+        billingGateway.destroy()
+        billingGateway = billing
+        adsGateway = ads
+        observeBillingGateway(billing)
+        billing.connect()
+        ads.initialize()
+    }
+
+    private fun syncSoundtrackPlayback() {
+        val state = _uiState.value
+        val shouldPlay = isAppInForeground &&
+            state.isMusicEnabled &&
+            !state.isSplashActive &&
+            !state.isAdSlotOpen
+        soundtrackController.updatePlaybackState(shouldPlay)
+    }
+
+    override fun onCleared() {
+        billingObserverJob?.cancel()
+        billingGateway.destroy()
+        soundtrackController.release()
+        super.onCleared()
+    }
+
     fun dismissSplash(openReaderDirectly: Boolean = false) {
         _uiState.update { it.copy(isSplashActive = false) }
+        syncSoundtrackPlayback()
         if (openReaderDirectly) {
             val defaultComic = _uiState.value.comics.firstOrNull { it.isBuiltIn && it.language == _uiState.value.currentLanguage }
                 ?: _uiState.value.comics.firstOrNull()
@@ -137,87 +353,106 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showSplash() {
         _uiState.update { it.copy(isSplashActive = true) }
+        syncSoundtrackPlayback()
     }
 
     fun openPaywall() {
-        _uiState.update { it.copy(isPaywallOpen = true, isAdSlotOpen = false) }
+        _uiState.update {
+            it.copy(
+                isPaywallOpen = true,
+                isAdSlotOpen = false,
+                paywallStatusMessage = null
+            )
+        }
+        syncSoundtrackPlayback()
     }
 
     fun closePaywall() {
-        _uiState.update { it.copy(isPaywallOpen = false, pendingLockedComic = null) }
-    }
-
-    fun buyFullVersion() {
-        repository.unlockPremium()
-        val lang = _uiState.value.currentLanguage
-        val pending = _uiState.value.pendingLockedComic
         _uiState.update {
             it.copy(
                 isPaywallOpen = false,
-                isAdSlotOpen = false,
-                isPremiumUnlocked = true,
-                pendingLockedComic = null,
-                snackbarMessage = AppStrings.purchaseSuccessMessage(lang)
+                isBillingBusy = false,
+                paywallStatusMessage = null,
+                pendingLockedComic = null
             )
-        }
-        if (pending != null) {
-            openComic(pending, 0)
         }
     }
 
-    fun buySeriesPack() {
-        repository.unlockSeriesPack()
-        val lang = _uiState.value.currentLanguage
-        val pending = _uiState.value.pendingLockedComic
-        val builtInCount = _uiState.value.comics.count { it.isBuiltIn }.coerceAtLeast(50)
-        _uiState.update {
-            it.copy(
-                isPaywallOpen = false,
-                isAdSlotOpen = false,
-                seriesUnlocked = true,
-                pendingLockedComic = null,
-                snackbarMessage = AppStrings.seriesPurchaseSuccessMessage(lang, builtInCount)
-            )
-        }
-        if (pending != null) {
-            openComic(pending, 0)
-        }
+    fun buyFullVersion(activity: Activity? = null) {
+        if (_uiState.value.isBillingBusy) return
+        _uiState.update { it.copy(isBillingBusy = true, paywallStatusMessage = null) }
+        billingGateway.launchPurchase(activity, SkuCatalog.SKU_PRO_LIFETIME)
     }
 
-    fun startRewardedAdUnlock() {
+    fun buySeriesPack(activity: Activity? = null) {
+        if (_uiState.value.isBillingBusy) return
+        _uiState.update { it.copy(isBillingBusy = true, paywallStatusMessage = null) }
+        billingGateway.launchPurchase(activity, SkuCatalog.SKU_SERIES_VOLUME1)
+    }
+
+    fun startRewardedAdUnlock(activity: Activity? = null) {
+        if (_uiState.value.isAdLoading) return
         _uiState.update {
             it.copy(
                 isPaywallOpen = false,
                 isAdSlotOpen = true,
-                isRewardedAdMode = true
+                isRewardedAdMode = true,
+                isAdLoading = true,
+                paywallStatusMessage = null
             )
         }
-    }
+        syncSoundtrackPlayback()
 
-    fun completeAdSlot() {
-        val state = _uiState.value
-        val lang = state.currentLanguage
-        if (state.isRewardedAdMode) {
-            val newMax = repository.unlockNextAdBatch()
-            val pending = state.pendingLockedComic
-            _uiState.update {
-                it.copy(
-                    isAdSlotOpen = false,
-                    isRewardedAdMode = false,
-                    adUnlockedMaxStory = newMax,
-                    pendingLockedComic = null,
-                    snackbarMessage = AppStrings.adBatchUnlockedMessage(lang, newMax)
-                )
-            }
-            if (pending != null && pending.storyNumber <= newMax) {
-                openComic(pending, 0)
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    isAdSlotOpen = false,
-                    isRewardedAdMode = false
-                )
+        adsGateway.showRewardedAd(activity) { result ->
+            val state = _uiState.value
+            val lang = state.currentLanguage
+            when (result) {
+                AdShowResult.RewardEarned -> {
+                    val newMax = repository.unlockNextAdBatch()
+                    val pending = state.pendingLockedComic
+                    _uiState.update {
+                        it.copy(
+                            isAdSlotOpen = false,
+                            isRewardedAdMode = false,
+                            isAdLoading = false,
+                            adUnlockedMaxStory = newMax,
+                            pendingLockedComic = null,
+                            snackbarMessage = AppStrings.adBatchUnlockedMessage(lang, newMax)
+                        )
+                    }
+                    syncSoundtrackPlayback()
+                    if (pending != null && pending.storyNumber <= newMax) {
+                        openComic(pending, 0, activity)
+                    }
+                }
+                AdShowResult.ClosedWithoutReward -> {
+                    val msg = AppStrings.rewardedAdClosedEarly(lang)
+                    _uiState.update {
+                        it.copy(
+                            isAdSlotOpen = false,
+                            isRewardedAdMode = false,
+                            isAdLoading = false,
+                            isPaywallOpen = state.pendingLockedComic != null,
+                            paywallStatusMessage = msg,
+                            snackbarMessage = msg
+                        )
+                    }
+                    syncSoundtrackPlayback()
+                }
+                is AdShowResult.FailedToShow -> {
+                    val msg = AppStrings.rewardedAdNotReadyError(lang)
+                    _uiState.update {
+                        it.copy(
+                            isAdSlotOpen = false,
+                            isRewardedAdMode = false,
+                            isAdLoading = false,
+                            isPaywallOpen = state.pendingLockedComic != null,
+                            paywallStatusMessage = msg,
+                            snackbarMessage = msg
+                        )
+                    }
+                    syncSoundtrackPlayback()
+                }
             }
         }
     }
@@ -227,38 +462,39 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 isAdSlotOpen = false,
                 isRewardedAdMode = false,
+                isAdLoading = false,
                 pendingLockedComic = null
             )
         }
+        syncSoundtrackPlayback()
     }
 
     fun restorePurchases() {
-        val restored = repository.restorePurchases()
-        val lang = _uiState.value.currentLanguage
-        val msg = if (restored) {
-            AppStrings.purchaseSuccessMessage(lang)
-        } else {
-            when (lang) {
-                AppLanguage.RUSSIAN -> "Предыдущие покупки не найдены"
-                AppLanguage.SPANISH -> "No se encontraron compras anteriores"
-                AppLanguage.ENGLISH -> "No prior purchases found"
-            }
-        }
-        _uiState.update { it.copy(isPaywallOpen = false, snackbarMessage = msg) }
+        if (_uiState.value.isBillingBusy) return
+        _uiState.update { it.copy(isBillingBusy = true, paywallStatusMessage = null) }
+        billingGateway.queryOwnedPurchases(userInitiated = true)
     }
 
-    fun openComic(comic: ComicBook, startPageIndex: Int? = null) {
+    fun openComic(comic: ComicBook, startPageIndex: Int? = null, activity: Activity? = null) {
         // Hybrid Gated Check: free (1..10), ad-unlocked batch, series pack, or PRO
         if (!repository.isComicUnlocked(comic)) {
-            _uiState.update { it.copy(pendingLockedComic = comic, isPaywallOpen = true) }
+            _uiState.update {
+                it.copy(
+                    pendingLockedComic = comic,
+                    isPaywallOpen = true,
+                    paywallStatusMessage = null
+                )
+            }
             return
         }
 
         val state = _uiState.value
         val isAdSupportedStory = !comic.isFree && !state.isPremiumUnlocked && !state.seriesUnlocked
         val nextAdCount = if (isAdSupportedStory) state.adSupportedReadsSinceBreak + 1 else state.adSupportedReadsSinceBreak
-        // Show an interstitial sponsor break only every 4th ad-supported story read to avoid reader fatigue
-        val showInterstitialBreak = isAdSupportedStory && nextAdCount >= AD_BREAK_STORY_INTERVAL
+        val shouldTriggerInterstitial = isAdSupportedStory &&
+            nextAdCount >= AD_BREAK_STORY_INTERVAL &&
+            activity != null &&
+            adsGateway.isInterstitialReady.value
 
         val pageIdx = startPageIndex ?: comic.lastReadPageIndex.coerceIn(0, (comic.pages.size - 1).coerceAtLeast(0))
         _uiState.update {
@@ -271,10 +507,21 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
                 isLoreSheetOpen = false,
                 isSequenceSheetOpen = false,
                 pendingLockedComic = null,
-                adSupportedReadsSinceBreak = if (showInterstitialBreak) 0 else nextAdCount,
-                isAdSlotOpen = showInterstitialBreak,
-                isRewardedAdMode = false
+                adSupportedReadsSinceBreak = if (isAdSupportedStory && nextAdCount >= AD_BREAK_STORY_INTERVAL) 0 else nextAdCount,
+                isAdSlotOpen = shouldTriggerInterstitial,
+                isRewardedAdMode = false,
+                isAdLoading = false
             )
+        }
+        syncSoundtrackPlayback()
+
+        if (shouldTriggerInterstitial) {
+            adsGateway.showInterstitialAd(activity) {
+                _uiState.update { it.copy(isAdSlotOpen = false, isRewardedAdMode = false) }
+                syncSoundtrackPlayback()
+            }
+        } else if (isAdSupportedStory && !adsGateway.isInterstitialReady.value) {
+            adsGateway.preloadInterstitialAd()
         }
     }
 
@@ -289,25 +536,25 @@ class ComicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openNextComic() {
+    fun openNextComic(activity: Activity? = null) {
         val state = _uiState.value
         val active = state.activeComic ?: return
         val list = state.comics
         val idx = list.indexOfFirst { it.id == active.id }
         if (idx in 0 until list.lastIndex) {
             repository.updateReadingProgress(active.id, state.currentPageIndex)
-            openComic(list[idx + 1], startPageIndex = 0)
+            openComic(list[idx + 1], startPageIndex = 0, activity = activity)
         }
     }
 
-    fun openPreviousComic() {
+    fun openPreviousComic(activity: Activity? = null) {
         val state = _uiState.value
         val active = state.activeComic ?: return
         val list = state.comics
         val idx = list.indexOfFirst { it.id == active.id }
         if (idx > 0) {
             repository.updateReadingProgress(active.id, state.currentPageIndex)
-            openComic(list[idx - 1], startPageIndex = 0)
+            openComic(list[idx - 1], startPageIndex = 0, activity = activity)
         }
     }
 
